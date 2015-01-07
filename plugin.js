@@ -73,20 +73,20 @@ module.exports = {
                     "and make me forget certain facts.",
                     "",
                     "You can look up factoids with either !factoid <factoid name>",
-                    "or you can use"
-                    factoidTrigger + " <factoid name>"
-                    ""
+                    "or you can use",
+                    factoidTrigger + " <factoid name>",
+                    "",
                     "A factoid name cannot contain an equals sign (=)."
                 ]
                 "factoid": [
                     "!factoid factoid-name",
-                    ""
+                    "",
                     "Looks up a factoid."
                 ],
 
                 "learn": [
-                    "!learn factoid-name = faction-description"
-                    ""
+                    "!learn factoid-name = faction-description",
+                    "",
                     "Add a factoid to the system."
                 ],
 
