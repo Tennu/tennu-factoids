@@ -1,0 +1,27 @@
+{
+  "name": "tennu-factoids",
+  "version": "1.0.0pre",
+  "description": "Factoids plugin for Tennu IRC bots.",
+  "main": "plugin.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tennu/tennu-factoids.git"
+  },
+  "keywords": [
+    "tennu-plugins",
+    "factoids",
+    "irc"
+  ],
+  "author": "Ryan Scheel (Havvy)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Tennu/tennu-factoids/issues"
+  },
+  "homepage": "https://github.com/Tennu/tennu-factoids",
+  "dependencies": {
+    "dirty": "^0.9.9"
+  }
+}
