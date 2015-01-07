@@ -1,4 +1,5 @@
 const Factoids = require("./factoids");
+const format = require('util').format;
 
 const splitAt = function (string, match) {
     const matchIx = string.indexOf(match);
@@ -18,7 +19,7 @@ module.exports = {
         const factoidTrigger = client.config("factoid-trigger");
         const database = client.config("factoid-database");
 
-        const factoids = Factoids(database);
+        const factoids = Factoids(database, client.debug.bind(client, "factoids"));
 
         // Privmsg -> Bool
         function isFactoidRequest(privmsg) {
@@ -27,7 +28,7 @@ module.exports = {
 
         // String -> String
         function getFactoidRequest(message) {
-            return message.slice(factoidTrigger.length).replace(/^\s+|\s$/g, "").replace(/\s+/g, " ");
+            return message.slice(factoidTrigger.length).replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
         }
 
         return {
@@ -35,69 +36,71 @@ module.exports = {
                 privmsg: function (privmsg) {
                     if (isFactoidRequest(privmsg)) {
                         client.note("factoids", "getting factoid: " + privmsg.message);
-                        return factoids.get(getFactoidRequest(privmsg.message));
+                        return factoids.get(getFactoidRequest(privmsg.message), false);
                     }
                 },
 
                 "!factoid": function (command) {
+                    if (command.args.length === 0) {
+                        return "No factoid specified.";
+                    }
+
                     client.note("factoids", "getting factoid: " + command.args.join(" "));
-                    return factoids.get(command.args.join(" "), command.channel);
+                    return factoids.get(command.args.join(" "), command.channel, true);
                 },
 
                 "!learn": function (command) {
                     // args is [factoid, description]
-                    var args = splitAt(command.args.join(" "), "=");
-                    args[0] = args[0].replace(/^\s+|\s$/g, "");
-                    args[1] = args[1].replace(/^\s+|\s$/g, "");
+                    const args = splitAt(command.args.join(" "), "=");
+                    const key = args[0].replace(/^\s+|\s+$/g, "");
+                    const value = args[1].replace(/^\s+|\s+$/g, "");
 
-                    client.note("factoids", "learning that " + args[0] + " = " + args[1]);
-                    factoids.set(args[0], args[1]);
+                    if (key === "") {
+                        return "Invalid format. Missing key.";
+                    }
 
-                    return "Learned!";
+                    if (value === "") {
+                        return "Invalid format. Missing '=' or factoid description.";
+                    }
+
+                    client.note("factoids", format("learning that %s = %s", key, value));
+                    factoids.set(key, value);
+
+                    return format("Learned factoid '%s'", key);
                 },
 
                 "!forget": function (command) {
-                    client.note("factoids", "forgetting: " + command.args.join(" "));
+                    if (command.args.length === 0) {
+                        return "No factoid specified.";
+                    }
+
+                    const key = command.args.join(" ");
+                    client.note("factoids", format("forgetting: %s", key));
+
+                    if (!factoids.get(key)) {
+                        return format("Factoid by the name '%s' does not exist.", key)
+                    }
                     factoids.delete(command.args.join(" "));
 
-                    return "Forgotten!"
+                    return format("Forgotten factoid by name of '%s'", key);
                 }
             },
 
             help: {
-                "factoids": [
-                    "Commands: !factoid, !learn, !forget",
-                    "",
-                    "A factoid system is a user-addable dictionary.",
-                    "You can lookup facts, teach new facts to me,",
-                    "and make me forget certain facts.",
-                    "",
-                    "You can look up factoids with either !factoid <factoid name>",
-                    "or you can use",
-                    factoidTrigger + " <factoid name>",
-                    "",
-                    "A factoid name cannot contain an equals sign (=)."
-                ],
                 "factoid": [
                     "!factoid factoid-name",
-                    "",
-                    "Looks up a factoid."
                 ],
 
                 "learn": [
-                    "!learn factoid-name = faction-description",
-                    "",
-                    "Add a factoid to the system."
+                    "!learn factoid-name = faction-description"
                 ],
 
                 "forget": [
-                    "!forget factoid-name",
-                    "",
-                    "Remove a factoid from the system."
+                    "!forget factoid-name"
                 ]
             },
 
-            commands: ["learn, forget"]
+            commands: ["factoid", "learn, forget"]
         };
     }
 }
