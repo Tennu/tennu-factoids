@@ -5,15 +5,15 @@ module.exports = function (databaseLocation) {
 
     return {
         get: function (key) {
-            return dirty.get(key);
+            return db.get(key);
         },
 
         set: function (key, value) {
-            dirty.set(key, value);
+            db.set(key, value);
         },
 
         delete: function (key) {
-            dirty.rm(key);
+            db.rm(key);
         }
     };
 };
