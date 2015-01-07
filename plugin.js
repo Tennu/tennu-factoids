@@ -77,7 +77,7 @@ module.exports = {
                     factoidTrigger + " <factoid name>",
                     "",
                     "A factoid name cannot contain an equals sign (=)."
-                ]
+                ],
                 "factoid": [
                     "!factoid factoid-name",
                     "",
