@@ -14,6 +14,18 @@ const splitAt = function (string, match) {
     return [first, rest];
 };
 
+const trim = function (string) {
+    return string.replace(/^\s+|\s+$/g, "");
+};
+
+const startsWith = function (string, prefix) {
+    return string.indexOf(prefix) === 0;
+};
+
+const replyPrefix = "<reply>";
+const actPrefix = "<act>";
+const aliasPrefix = "<alias>";
+
 module.exports = {
     init: function (client, imports) {
         const factoidTrigger = client.config("factoid-trigger");
@@ -27,8 +39,25 @@ module.exports = {
         }
 
         // String -> String
-        function getFactoidRequest(message) {
-            return message.slice(factoidTrigger.length).replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+        function getFactoidKey(message) {
+            return trim(message.slice(factoidTrigger.length).replace(/\s+/g, " "));
+        }
+
+        function getFactoid (key, respondWhenNoKey) {
+            const value = factoids.get(key);
+
+            if (value) {
+                console.log(util.inspect(value));
+                return value;
+            }
+            
+            log("factoids", "No key found.");
+
+            if (respondWhenNoKey) {
+                return format("No such factoid '%s' found.", key);
+            } else {
+                return /* no response */;
+            }
         }
 
         return {
@@ -36,7 +65,7 @@ module.exports = {
                 privmsg: function (privmsg) {
                     if (isFactoidRequest(privmsg)) {
                         client.note("factoids", "getting factoid: " + privmsg.message);
-                        return factoids.get(getFactoidRequest(privmsg.message), false);
+                        return getFactoid(getFactoidKey(privmsg.message), false);
                     }
                 },
 
@@ -46,14 +75,39 @@ module.exports = {
                     }
 
                     client.note("factoids", "getting factoid: " + command.args.join(" "));
-                    return factoids.get(command.args.join(" "), command.channel, true);
+                    return getFactoid(command.args.join(" "), command.channel, true);
                 },
 
                 "!learn": function (command) {
                     // args is [factoid, description]
                     const args = splitAt(command.args.join(" "), "=");
-                    const key = args[0].replace(/^\s+|\s+$/g, "");
-                    const value = args[1].replace(/^\s+|\s+$/g, "");
+                    const key = trim(args[0])
+                    const value = function (input) {
+                        const trimmed = trim(args[1]);
+                        const lowered = trimmed.toLowerCase();
+
+                        if (startsWith(lowered, actPrefix)) {
+                            return {
+                                intent: "act",
+                                message: trimmed.slice(actPrefix.length)
+                            };
+                        } else if (startsWith(lowered, replyPrefix)) {
+                            return {
+                                intent: "say",
+                                message: trimmed.slice(replyPrefix.length)
+                            };
+                        } else if (startsWith(lowered, aliasPrefix)) {
+                            return {
+                                intent: "alias",
+                                message: trimmed.slice(aliasPrefix.length)
+                            }
+                        } else {
+                            return {
+                                intent: "say",
+                                message: format("%s is %s", key, trimmed)
+                            };
+                        }
+                    }(args[1]);
 
                     if (key === "") {
                         return "Invalid format. Missing key.";
@@ -92,7 +146,12 @@ module.exports = {
                 ],
 
                 "learn": [
-                    "!learn factoid-name = faction-description"
+                    "!learn factoid-name = faction-description",
+                    "",
+                    "Adds a factoid to the factoids database.",
+                    "Can also change a factoid.",
+                    "",
+                    "Use <reply> "
                 ],
 
                 "forget": [
@@ -103,4 +162,4 @@ module.exports = {
             commands: ["factoid", "learn, forget"]
         };
     }
-}
+};
