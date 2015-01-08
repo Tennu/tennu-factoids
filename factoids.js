@@ -1,7 +1,7 @@
 const Dirty = require('dirty');
 const format = require('util').format;
 
-module.exports = function (databaseLocation, log) {
+module.exports = function (databaseLocation) {
     const db = Dirty(databaseLocation);
 
     return {

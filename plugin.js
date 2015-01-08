@@ -50,7 +50,7 @@ module.exports = {
                 return value;
             }
             
-            log("factoids", "No key found.");
+            client.note("factoids", "No key found.");
 
             if (respondWhenNoKey) {
                 return format("No such factoid '%s' found.", key);
