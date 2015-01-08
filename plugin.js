@@ -47,7 +47,6 @@ module.exports = {
             const value = factoids.get(key);
 
             if (value) {
-                console.log(util.inspect(value));
                 return value;
             }
             
