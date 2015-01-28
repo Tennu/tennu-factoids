@@ -10,9 +10,10 @@
  *   editor: Full hostmask of last editor to the factoid.
  *   time: Time of modification.
  *   frozen: Boolean of whether only admins can edit the factoid.
- * }
+ * }^2
  *
  * 1: Will be missing if the message is deleted.
+ * 2: Factoids that were never created but frozen will just be {frozen: true}.
  **/
 
  // Dirty DB really needs an update method...
@@ -21,9 +22,22 @@ const Dirty = require('dirty');
 const Promise = require('bluebird');
 const format = require('util').format;
 const now = function () { return (new Date()).toISOString(); }
+const Result = require('./result');
+const Ok = Result.Ok;
+const Fail = Result.Fail;
 
-module.exports = function (databaseLocation) {
+module.exports = function (databaseLocation, isEditorAdmin) {
     const db = Dirty(databaseLocation);
+
+    const canEdit = function (editor, isKeyFrozen) {
+        return new Promise(function (resolve, reject) {
+            if (isKeyFrozen) {
+                resolve(isEditorAdmin(editor));
+            } else {
+                resolve(true);
+            }
+        });
+    };
 
     return {
         // String -> %Tennu.Message{}
@@ -40,81 +54,113 @@ module.exports = function (databaseLocation) {
             };
         },
 
-        // String, %Factoid{} -> Boolean
-        // Boolean represents whether key was actually set.
-        // A key can be not set if the key is frozen and
-        //   the editor is not an admin.
+        // String, %Factoid{} -> Result<(), String>
         set: function (key, next) {
-            return new Promise(function (resolve, reject) {
+            return Promise.resolve()
+            .then(function () {
                 if (!(next.intent && next.message && next.editor)) {
-                    reject(new Error("An addition or modification to the database requires an intent, message, and editor."));
-                    return;
+                    throw new Error("An intent, message, and editor are all needed to set a new factoid.");
                 }
 
-                function _set () {
-                    db.set(key.toLowerCase(), {
-                        intent: next.intent,
-                        message: next.message,
-                        editor: next.editor,
-                        time: now(),
-                        frozen: previous ? previous.frozen : false
-                    });
-                }
+                return db.get(key);
+            })
+            .then(function (previous) {
+                return canEdit(next.editor, previous && previous.frozen)
+                .then(function (ifCanEdit) {
+                    if (ifCanEdit) {
+                        return Ok(previous);
+                    } else {
+                        console.log("Frozen!");
+                        return Fail("frozen");
+                    }
+                });
+            })
+            .then(Result.map(function (previous) {
+                next = {
+                    intent: next.intent,
+                    message: next.message,
+                    editor: next.editor,
+                    time: now(),
+                    frozen: previous ? previous.frozen : false
+                };
 
-                const previous = db.get(key);
+                db.set(key.toLowerCase(), next);
 
-                console.log(require('util').inspect(previous));
-                console.log(require('util').inspect(next));
-
-                if (previous && previous.frozen) {
-                    return next.isAdmin(next.editor).then(function (isAdmin) {
-                        if (isAdmin) {
-                            _set();
-                            resolve(true);
-                        } else {
-                            resolve(false);
-                        }
-                    });
-                }
-
-                _set();
-                resolve(true);
-            });
+                return Ok(next);
+            }));
         },
 
-        // String, Hostmask -> Boolean
-        // Boolean represents whether key was actaully deleted.
-        // A key can only be deleted if it has a message, and
-        //   if it is frozen, that the editor is an admin.
-        delete: function (key, editor, isAdmin) {
-            return new Promise(function (resolve, reject) {
-                key = key.toLowerCase();
-                const previous = db.get(key);
-
-                function _delete () {
-                    db.set(key, {
-                        editor: editor,
-                        time: now(),
-                        frozen: previous.frozen
-                    });
-                }
-
-                if (!previous || !previous.message) {
-                    reject([false, "dne"]);
-                } else if (previous && previous.frozen) {
-                    isAdmin(editor).then(function (isAdmin) {
-                        if (isAdmin) {
-                            _delete();
-                            resolve([true]);
-                        } else {
-                            resolve([false, "frozen"]);
-                        }
-                    }).catch(reject);
+        // String, Hostmask -> Result<(), String>
+        delete: function (key, editor) {
+            return Promise.resolve(db.get(key.toLowerCase()))
+            .then(function (description) {
+                if (description && description.message) {
+                    return Ok(description);
                 } else {
-                    _delete();
-                    resolve([true]);
+                    return Fail("dne");
                 }
-            });
+            })
+            .then(Result.map(function (description) {
+                return canEdit(editor, description.frozen)
+                .then(function (ifCanEdit) {
+                    if (ifCanEdit) {
+                        return Ok(description);
+                    } else {
+                        return Fail("frozen");
+                    }
+                })
+            }))
+            .then(Result.map(function (description) {
+                db.set(key, {
+                    editor: editor,
+                    time: now(),
+                    frozen: description.frozen
+                });
+
+                return Ok();
+            }));
+        },
+
+        // (String, RegExp, String, HostMask) -> Result<(), String>
+        replace: function (key, regexp, replacement, editor) {
+            return Promise.resolve(db.get(key))
+            .then(function (description) {
+                if (description) {
+                    return Ok(description);
+                } else {
+                    return Fail("dne");
+                }
+            })
+            .then(Result.map(function (description) {
+                return canEdit(editor, description.frozen || false)
+                .then(function (ifCanEdit) {
+                    if (ifCanEdit) {
+                        return Ok(description);
+                    } else {
+                        return Fail("frozen");
+                    }
+                });
+            }))
+            .then(Result.map(function (description) {
+                const old_message = description.message;
+                const new_message = old_message.replace(regexp, replacement);
+
+                if (old_message === new_message) {
+                    return Fail("unchanged");
+                }
+
+                if (new_message === "") {
+                    return Fail("no-message-left");
+                }
+
+                description.message = new_message;
+                description.editor = editor;
+                description.time = now();
+
+                db.set(key, description);
+
+                return Ok(description);
+            }));
         },
 
         // String -> Boolean
@@ -125,6 +171,7 @@ module.exports = function (databaseLocation) {
                 db.set(key, {
                     frozen: true
                 });
+                return;
             }
 
             db.set(key, {
