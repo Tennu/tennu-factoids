@@ -50,7 +50,8 @@ module.exports = function (databaseLocation, isEditorAdmin) {
 
             return {
                 intent: value.intent,
-                message: value.message
+                message: value.message,
+                template: true
             };
         },
 
