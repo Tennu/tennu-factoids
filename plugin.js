@@ -64,7 +64,7 @@ module.exports = {
                 return value;
             }
             
-            client.note("factoids", "No key found.");
+            client.note("PluginFactoids", "No key found.");
 
             if (respondWhenNoKey) {
                 return format("No such factoid '%s' found.", key);
@@ -76,7 +76,7 @@ module.exports = {
         const handlers = {
             privmsg: function (privmsg) {
                 if (isFactoidRequest(privmsg)) {
-                    client.note("factoids", "getting factoid: " + privmsg.message);
+                    client.note("PluginFactoids", "Getting factoid: " + privmsg.message);
                     return getFactoid(getFactoidKey(privmsg.message), false);
                 }
             },
@@ -86,7 +86,7 @@ module.exports = {
                     return "No factoid specified.";
                 }
 
-                client.note("factoids", "getting factoid: " + command.args.join(" "));
+                client.note("PluginFactoids", "Getting factoid: " + command.args.join(" "));
                 return getFactoid(command.args.join(" "), command.channel, true);
             },
 
@@ -155,7 +155,7 @@ module.exports = {
                 }))
                 .then(Result.mapFail(function (failureReason) {
                     switch (failureReason) {
-                        case "dne":                 return Ok(format("Cannot edit '%s'. Factoid does not exist."));
+                        case "dne":                 return Ok(format("Cannot edit '%s'. Factoid does not exist.", key));
                         case "frozen":              return Ok(format("Cannot edit '%s'. Factoid is locked.", key));
                         case "unchanged":           return Ok(format("Replacement on '%s' had no effect.", key));
                         case "no-message-left":     return Ok(format("Cannot edit '%s'. Would leave factoid empty. Use %sforget instead.", key, commandTrigger));
@@ -228,9 +228,7 @@ module.exports = {
                     " ",
                     "Adds a factoid to the factoids database.",
                     "This bot also supports a modifier before the `=`.",
-                    "To see them, do {{!}}help learn formats",
-                    "{{!}}learn key := description",
-                    "Set's the description to be `key is description`."
+                    "To see them, do {{!}}help learn formats"
                 ],
 
                 "formats": [
