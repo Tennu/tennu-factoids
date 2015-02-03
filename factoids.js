@@ -125,9 +125,9 @@ module.exports = function (databaseLocation, isEditorAdmin) {
 
         // (String, RegExp, String, HostMask) -> Result<(), String>
         replace: function (key, regexp, replacement, editor) {
-            return Promise.resolve(db.get(key))
+            return Promise.resolve(db.get(key.toLowerCase()))
             .then(function (description) {
-                if (description.message) {
+                if (description && description.message) {
                     return Ok(description);
                 } else {
                     return Fail("dne");
