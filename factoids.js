@@ -92,7 +92,8 @@ module.exports = function (databaseLocation, isEditorAdmin) {
 
         // String, Hostmask -> Result<(), String>
         delete: function (key, editor) {
-            return Promise.resolve(db.get(key.toLowerCase()))
+            key = key.toLowerCase();
+            return Promise.resolve(db.get(key))
             .then(function (description) {
                 if (description && description.message) {
                     return Ok(description);
@@ -125,7 +126,7 @@ module.exports = function (databaseLocation, isEditorAdmin) {
         replace: function (key, regexp, replacement, editor) {
             return Promise.resolve(db.get(key))
             .then(function (description) {
-                if (description) {
+                if (description.message) {
                     return Ok(description);
                 } else {
                     return Fail("dne");
