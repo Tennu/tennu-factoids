@@ -161,7 +161,7 @@ module.exports = {
                         case "no-message-left":     return Ok(format("Cannot edit '%s'. Would leave factoid empty. Use %sforget instead.", key, commandTrigger));
                         case "bad-replace-format":  return Ok(format("Invalid replacement format. See %shelp learn replace for format.", commandTrigger));
                         case "bad-format-no-key":   return Ok("Invalid format. No key specified.");
-                        case "bad-format-bad-desc": return Ok("Invalid format. No description specified.");
+                        case "bad-format-no-desc": return Ok("Invalid format. No description specified.");
                         default:
                             client.error("PluginFactoids", format("Unhandled failure reason in !learn: %s", failureReason));
                             return Ok(format("Error: Unhandled failure reason in text replacement ('%s').", failureReason));
