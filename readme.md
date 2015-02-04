@@ -1,0 +1,1 @@
+See [https://tennu.github.io/plugins/factoids](here) for documentation.
