@@ -292,7 +292,9 @@ module.exports = {
         return {
             handlers: handlers,
             help: helpfiles,
-            commands: Object.keys(handlers).map(function (command) { return command.slice(1); })
+            commands: Object.keys(handlers)
+                .filter(function (handler) { return handler[0] === "!"; })
+                .map(function (command) { return command.slice(1); })
         };
     }
 };
