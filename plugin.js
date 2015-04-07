@@ -212,6 +212,17 @@ module.exports = {
         };
 
         const helpfiles = {
+            "factoids": [
+                "Factoids are short descriptions for phrases often used"
+                "for FAQs or inside jokes.",
+                "",
+                "You can look up a factoid with `{{!}}factoid key` or",
+                "teach this bot a factoid with `{{!}}learn`. You can also",
+                "make the bot forget a factoid with `{{!}}forget key`.",
+                "Admins can make certain factoids unmodifiable.",
+                "For more information, do {{!}}help command-name."
+            ],
+
             "factoid": [
                 "{{!}}factoid key",
                 format("%skey", factoidTrigger),
@@ -224,7 +235,7 @@ module.exports = {
 
             "learn": {
                 "*": [
-                    "{{!}}learn factoid-key = faction-description",
+                    "{{!}}learn factoid-key = factiod-description",
                     " ",
                     "Adds a factoid to the factoids database.",
                     "This bot also supports a modifier before the `=`.",
