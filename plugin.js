@@ -211,7 +211,7 @@ module.exports = {
 
         const helpfiles = {
             "factoids": [
-                "Factoids are short descriptions for phrases often used"
+                "Factoids are short descriptions for phrases often used",
                 "for FAQs or inside jokes.",
                 "",
                 "You can look up a factoid with `{{!}}factoid key` or",
