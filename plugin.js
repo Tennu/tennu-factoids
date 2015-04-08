@@ -132,8 +132,7 @@ module.exports = {
                     }));
                 }
 
-                return Promise.resolve()
-                    .then(function () {
+                return Promise.try(function () {
                     if (!fullkey) {
                         return Fail("bad-format-no-key");
                     }
@@ -177,8 +176,7 @@ module.exports = {
             "!forget": function (command) {
                 var key;
 
-                return Promise.resolve()
-                .then(function () {
+                return Promise.try(function () {
                     if (command.args.length === 0) {
                         return Fail("no-args");
                     } else {

@@ -57,8 +57,7 @@ module.exports = function (databaseLocation, isEditorAdmin) {
 
         // String, %Factoid{} -> Result<(), String>
         set: function (key, value) {
-            return Promise.resolve()
-            .then(function () {
+            return Promise.try(function () {
                 if (!(value.intent && value.message && value.editor)) {
                     throw new Error("An intent, message, and editor are all needed to set a new factoid.");
                 }
