@@ -56,38 +56,38 @@ module.exports = function (databaseLocation, isEditorAdmin) {
         },
 
         // String, %Factoid{} -> Result<(), String>
-        set: function (key, next) {
+        set: function (key, value) {
             return Promise.resolve()
             .then(function () {
-                if (!(next.intent && next.message && next.editor)) {
+                if (!(value.intent && value.message && value.editor)) {
                     throw new Error("An intent, message, and editor are all needed to set a new factoid.");
                 }
 
                 return db.get(key);
             })
-            .then(function (previous) {
-                return canEdit(next.editor, previous && previous.frozen)
+            .then(function (previousValue) {
+                return canEdit(value.editor, previousValue && previousValue.frozen)
                 .then(function (ifCanEdit) {
                     if (ifCanEdit) {
-                        return Ok(previous);
+                        return Ok(previousValue);
                     } else {
                         console.log("Frozen!");
                         return Fail("frozen");
                     }
                 });
             })
-            .then(Result.map(function (previous) {
-                next = {
-                    intent: next.intent,
-                    message: next.message,
-                    editor: next.editor,
+            .then(Result.map(function (previousValue) {
+                value = {
+                    intent: value.intent,
+                    message: value.message,
+                    editor: value.editor,
                     time: now(),
-                    frozen: previous ? previous.frozen : false
+                    frozen: previousValue ? previousValue.frozen : false
                 };
 
-                db.set(key.toLowerCase(), next);
+                db.set(key.toLowerCase(), value);
 
-                return Ok(next);
+                return Ok(value);
             }));
         },
 
