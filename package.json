@@ -4,7 +4,7 @@
   "description": "Factoids plugin for Tennu IRC bots.",
   "main": "plugin.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha -R spec"
   },
   "repository": {
     "type": "git",
@@ -23,6 +23,12 @@
   "homepage": "https://github.com/Tennu/tennu-factoids",
   "dependencies": {
     "bluebird": "^2.8.2",
-    "dirty": "^0.9.9"
+    "dirty": "^0.9.9",
+    "r-result": "^1.1.1"
+  },
+  "devDependencies": {
+    "better-assert": "^1.0.2",
+    "deep-eql": "^0.1.3",
+    "mocha": "^2.2.4"
   }
 }

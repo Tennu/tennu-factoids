@@ -1,7 +1,8 @@
 const Factoids = require("./factoids");
 const format = require('util').format;
 const Promise = require('bluebird');
-const Result = require('./result');
+// Promise.onPossiblyUnhandledRejection(function () {});
+const Result = require('r-result');
 const Ok = Result.Ok;
 const Fail = Result.Fail;
 
@@ -28,6 +29,13 @@ const startsWith = function (string, prefix) {
 
 const endsWith = function (string, postfix) {
     return string.lastIndexOf(postfix) === string.length - postfix.length;
+};
+
+// Binds the last `n` arguments of a function where `n` is the length of `args`.
+const bindr = function (fn, args) {
+    return function () {
+        return fn.apply(null, Array.prototype.slice.call(arguments).concat(args));
+    };
 };
 
 module.exports = {
@@ -58,13 +66,14 @@ module.exports = {
         }
 
         function getFactoid (key, respondWhenNoKey) {
+            client.note("PluginFactoids", format("Getting factoid: %s", key));
             const value = factoids.get(key);
 
             if (value) {
                 return value;
             }
             
-            client.note("PluginFactoids", "No key found.");
+            client.note("PluginFactoids", format("Key '%s' not found.", key));
 
             if (respondWhenNoKey) {
                 return format("No such factoid '%s' found.", key);
@@ -76,7 +85,6 @@ module.exports = {
         const handlers = {
             privmsg: function (privmsg) {
                 if (isFactoidRequest(privmsg)) {
-                    client.note("PluginFactoids", "Getting factoid: " + privmsg.message);
                     return getFactoid(getFactoidKey(privmsg.message), false);
                 }
             },
@@ -86,8 +94,7 @@ module.exports = {
                     return "No factoid specified.";
                 }
 
-                client.note("PluginFactoids", "Getting factoid: " + command.args.join(" "));
-                return getFactoid(command.args.join(" "), command.channel, true);
+                return getFactoid(command.args.join(" "), true);
             },
 
             "!learn": function (command) {
@@ -106,9 +113,9 @@ module.exports = {
                     };
 
                     return factoids.set(key, description)
-                    .then(Result.map(function (description) {
+                    .then(bindr(Result.map, function (description) {
                         client.note("FactoidsPlugin", format("Factoid: '%s' => [%s] %s", key, description.intent, description.message));
-                        return Ok(format("Learned factoid '%s'", key));
+                        return format("Learned factoid '%s'", key);
                     }));
                 }
 
@@ -126,9 +133,9 @@ module.exports = {
                     const regexp = new RegExp(search, flags);
 
                     return factoids.replace(key, regexp, replaceText, command.hostmask)
-                    .then(Result.map(function (description) {
+                    .then(bindr(Result.map, function (description) {
                         client.note("FactoidsPlugin", format("Factoid: '%s' => [%s] %s", key, description.intent, description.message));
-                        return Ok(format("Successfully did replacement on '%s'.", key));
+                        return format("Successfully did replacement on '%s'.", key);
                     }));
                 }
 
@@ -143,7 +150,7 @@ module.exports = {
 
                     return Ok();
                 })
-                .then(Result.map(function () {
+                .then(bindr(Result.andThen, function () {
                     switch (modifier) {
                         case "~": return edit(key, description)
                         case ":": return learn(key, format("%s is %s", key, description), "say");
@@ -152,21 +159,21 @@ module.exports = {
                         default: return learn(trim(fullkey), description, "say");
                     }
                 }))
-                .then(Result.mapFail(function (failureReason) {
+                .then(bindr(Result.unwrapOrElse, function (failureReason) {
                     switch (failureReason) {
-                        case "dne":                 return Ok(format("Cannot edit '%s'. Factoid does not exist.", key));
-                        case "frozen":              return Ok(format("Cannot edit '%s'. Factoid is locked.", key));
-                        case "unchanged":           return Ok(format("Replacement on '%s' had no effect.", key));
-                        case "no-message-left":     return Ok(format("Cannot edit '%s'. Would leave factoid empty. Use %sforget instead.", key, commandTrigger));
-                        case "bad-replace-format":  return Ok(format("Invalid replacement format. See %shelp learn replace for format.", commandTrigger));
-                        case "bad-format-no-key":   return Ok("Invalid format. No key specified.");
-                        case "bad-format-no-desc": return Ok("Invalid format. No description specified.");
+                        case "dne":                 return format("Cannot edit '%s'. Factoid does not exist.", key);
+                        case "frozen":              return format("Cannot edit '%s'. Factoid is locked.", key);
+                        case "unchanged":           return format("Replacement on '%s' had no effect.", key);
+                        case "no-message-left":     return format("Cannot edit '%s'. Would leave factoid empty. Use %sforget instead.", key, commandTrigger);
+                        case "bad-replace-format":  return format("Invalid replacement format. See %shelp learn replace for format.", commandTrigger);
+                        case "bad-format-no-key":   return "Invalid format. No key specified.";
+                        case "bad-format-no-desc":  return "Invalid format. No description specified.";
                         default:
                             client.error("PluginFactoids", format("Unhandled failure reason in !learn: %s", failureReason));
-                            return Ok(format("Error: Unhandled failure reason in text replacement ('%s').", failureReason));
+                            return format("Error: Unhandled failure reason in text replacement ('%s').", failureReason);
                     }
                 }))
-                .then(Result.ok, function internalError (err) {
+                .catch(function internalError (err) {
                     client.error("PluginFactoids", "Error: " + err.name);
                     client.error(err.stack);
                     client.say(command.channel, "Error: Internal Error.");
@@ -183,25 +190,25 @@ module.exports = {
                         return Ok();
                     }
                 })
-                .then(Result.map(function () {
+                .then(bindr(Result.andThen, function () {
                     key = command.args.join(" ");
                     return factoids.delete(key, command.hostmask);
                 }))
-                .then(Result.map(function () {
+                .then(bindr(Result.andThen, function () {
                     client.note("PluginFactoids", format("Factoid forgotten: %s", key));
                     return Ok(format("Forgotten factoid '%s'", key));
                 }))
-                .then(Result.mapFail(function (reason) {
+                .then(bindr(Result.unwrapOrElse, function (reason) {
                     switch (reason) {
-                        case "dne":     return Ok(format("Cannot forget factoid '%s'. Factoid does not exist.", key));
-                        case "no-args": return Ok(       "Cannot forget factoid. No factoid specified.");
-                        case "frozen":  return Ok(format("Cannot forget factoid '%s'. Factoid is locked.", key));
+                        case "dne":     return format("Cannot forget factoid '%s'. Factoid does not exist.", key);
+                        case "no-args": return        "Cannot forget factoid. No factoid specified.";
+                        case "frozen":  return format("Cannot forget factoid '%s'. Factoid is locked.", key);
                         default:
                             client.error("PluginFactoids", format("Unhandled failure reason in !forget: %s", failureReason));
-                            return Ok(format("Error: Unhandled failure reason in text replacement ('%s').", failureReason));
+                            return format("Error: Unhandled failure reason in text replacement ('%s').", failureReason);
                     }
                 }))
-                .then(Result.ok, function internalError (err) {
+                .catch(function internalError (err) {
                     client.error("PluginFactoids", "Error: " + err.name);
                     client.error(err.stack);
                     client.say(command.channel, "Error: Internal Error.");
@@ -214,9 +221,9 @@ module.exports = {
                 "Factoids are short descriptions for phrases often used",
                 "for FAQs or inside jokes.",
                 "",
-                "You can look up a factoid with `{{!}}factoid key` or",
-                "teach this bot a factoid with `{{!}}learn`. You can also",
-                "make the bot forget a factoid with `{{!}}forget key`.",
+                format("You can look up a factoid with `{{!}}factoid key` or %skey.", factoidTrigger),
+                "You can teach this bot a factoid with `{{!}}learn`.",
+                "You can also make the bot forget a factoid with `{{!}}forget key`.",
                 "Admins can make certain factoids unmodifiable.",
                 "For more information, do {{!}}help command-name."
             ],

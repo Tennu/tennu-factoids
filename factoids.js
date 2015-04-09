@@ -22,9 +22,16 @@ const Dirty = require('dirty');
 const Promise = require('bluebird');
 const format = require('util').format;
 const now = function () { return (new Date()).toISOString(); }
-const Result = require('./result');
+const Result = require('r-result');
 const Ok = Result.Ok;
 const Fail = Result.Fail;
+
+// Binds the last `n` arguments of a function where `n` is the length of `args`.
+const bindr = function (fn, args) {
+    return function () {
+        return fn.apply(null, Array.prototype.slice.call(arguments).concat(args));
+    };
+};
 
 module.exports = function (databaseLocation, isEditorAdmin) {
     const db = Dirty(databaseLocation);
@@ -50,12 +57,11 @@ module.exports = function (databaseLocation, isEditorAdmin) {
 
             return {
                 intent: value.intent,
-                message: value.message,
-                template: true
+                message: value.message
             };
         },
 
-        // String, %Factoid{} -> Result<(), String>
+        // String, %Factoid{} -> Result<%Factoid{}, String>
         set: function (key, value) {
             return Promise.try(function () {
                 if (!(value.intent && value.message && value.editor)) {
@@ -70,12 +76,11 @@ module.exports = function (databaseLocation, isEditorAdmin) {
                     if (ifCanEdit) {
                         return Ok(previousValue);
                     } else {
-                        console.log("Frozen!");
                         return Fail("frozen");
                     }
                 });
             })
-            .then(Result.map(function (previousValue) {
+            .then(bindr(Result.map, function (previousValue) {
                 value = {
                     intent: value.intent,
                     message: value.message,
@@ -86,7 +91,7 @@ module.exports = function (databaseLocation, isEditorAdmin) {
 
                 db.set(key.toLowerCase(), value);
 
-                return Ok(value);
+                return value;
             }));
         },
 
@@ -101,24 +106,18 @@ module.exports = function (databaseLocation, isEditorAdmin) {
                     return Fail("dne");
                 }
             })
-            .then(Result.map(function (description) {
+            .then(bindr(Result.andThen, function (description) {
                 return canEdit(editor, description.frozen)
                 .then(function (ifCanEdit) {
-                    if (ifCanEdit) {
-                        return Ok(description);
-                    } else {
-                        return Fail("frozen");
-                    }
-                })
+                    return ifCanEdit ? Ok(description) : Fail("frozen");
+                });
             }))
-            .then(Result.map(function (description) {
+            .then(bindr(Result.map, function (description) {
                 db.set(key, {
                     editor: editor,
                     time: now(),
                     frozen: description.frozen
                 });
-
-                return Ok();
             }));
         },
 
@@ -132,17 +131,13 @@ module.exports = function (databaseLocation, isEditorAdmin) {
                     return Fail("dne");
                 }
             })
-            .then(Result.map(function (description) {
+            .then(bindr(Result.andThen, function (description) {
                 return canEdit(editor, description.frozen || false)
                 .then(function (ifCanEdit) {
-                    if (ifCanEdit) {
-                        return Ok(description);
-                    } else {
-                        return Fail("frozen");
-                    }
+                    return ifCanEdit ? Ok(description) : Fail("frozen");
                 });
             }))
-            .then(Result.map(function (description) {
+            .then(bindr(Result.map, function (description) {
                 const old_message = description.message;
                 const new_message = old_message.replace(regexp, replacement);
 
