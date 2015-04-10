@@ -2,4 +2,4 @@
 
 Factoids plugin for the Tennu IRC Bot framework.
 
-See [https://tennu.github.io/plugins/factoids](here) for documentation.
+See [here](https://tennu.github.io/plugins/factoids) for documentation.
