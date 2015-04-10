@@ -75,6 +75,7 @@ describe("Factoids", function () {
             return factoids.delete("sample keyword");
         })
         .then(function (deleteResult) {
+            logfn(inspect(deleteResult));
             assert(deleteResult.isOk());
         })
         .then(function () {
@@ -82,7 +83,7 @@ describe("Factoids", function () {
         });
     });
 
-    it ("can replace one description with a regexp change of another", function () {
+    it("can replace one description with a regexp change of another", function () {
         return factoids.set("sample keyword", {
             intent: "say",
             message: "sample description",

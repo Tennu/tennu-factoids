@@ -16,6 +16,11 @@
  * 2: Factoids that were never created but frozen will just be {frozen: true}.
  **/
 
+ // Almost all the promises used in this module is because the check
+ // for whether a user is an editor when a factoid is frozen returns a
+ // promise. If it could be done syncronously, all the promise handling
+ // code would just melt away.
+
  // Dirty DB really needs an update method...
 
 const Dirty = require('dirty');
@@ -36,14 +41,33 @@ const bindr = function (fn, args) {
 module.exports = function (databaseLocation, isEditorAdmin) {
     const db = Dirty(databaseLocation);
 
-    const canEdit = function (editor, isKeyFrozen) {
+    // (String, Hostmask) -> Result<undefined | %Factoid{}, "frozen">
+    const getPreviousKeyForEditing = function (key, editor) {
+        const previousValue = db.get(key);
+
         return new Promise(function (resolve, reject) {
-            if (isKeyFrozen) {
-                resolve(isEditorAdmin(editor));
+            // If there is no previous value, then
+            // it cannot be frozen, and thus is editable.
+            if (!previousValue) {
+                resolve(true)
+            // Otherwise, if the key is frozen, then only
+            // admins can edit the factoid. If the key
+            // isn't frozen, it's editable by everybody.
             } else {
-                resolve(true);
+                resolve(previousValue.frozen ? isEditorAdmin(editor) : true);
             }
+        })
+        .then(function (ifCanEdit) {
+            return ifCanEdit ? Ok(previousValue) : Fail("frozen");
         });
+    };
+
+    const editOnlyWhenPreviousKeyExists = function (description) {
+        if (description && description.message) {
+            return Ok(description);
+        } else {
+            return Fail("dne");
+        }
     };
 
     return {
@@ -68,17 +92,7 @@ module.exports = function (databaseLocation, isEditorAdmin) {
                     throw new Error("An intent, message, and editor are all needed to set a new factoid.");
                 }
 
-                return db.get(key);
-            })
-            .then(function (previousValue) {
-                return canEdit(value.editor, previousValue && previousValue.frozen)
-                .then(function (ifCanEdit) {
-                    if (ifCanEdit) {
-                        return Ok(previousValue);
-                    } else {
-                        return Fail("frozen");
-                    }
-                });
+                return getPreviousKeyForEditing(key, value.editor);
             })
             .then(bindr(Result.map, function (previousValue) {
                 value = {
@@ -98,20 +112,9 @@ module.exports = function (databaseLocation, isEditorAdmin) {
         // String, Hostmask -> Result<(), String>
         delete: function (key, editor) {
             key = key.toLowerCase();
-            return Promise.resolve(db.get(key))
-            .then(function (description) {
-                if (description && description.message) {
-                    return Ok(description);
-                } else {
-                    return Fail("dne");
-                }
-            })
-            .then(bindr(Result.andThen, function (description) {
-                return canEdit(editor, description.frozen)
-                .then(function (ifCanEdit) {
-                    return ifCanEdit ? Ok(description) : Fail("frozen");
-                });
-            }))
+
+            return getPreviousKeyForEditing(key, editor)
+            .then(bindr(Result.andThen, editOnlyWhenPreviousKeyExists))
             .then(bindr(Result.map, function (description) {
                 db.set(key, {
                     editor: editor,
@@ -123,20 +126,10 @@ module.exports = function (databaseLocation, isEditorAdmin) {
 
         // (String, RegExp, String, HostMask) -> Result<(), String>
         replace: function (key, regexp, replacement, editor) {
-            return Promise.resolve(db.get(key.toLowerCase()))
-            .then(function (description) {
-                if (description && description.message) {
-                    return Ok(description);
-                } else {
-                    return Fail("dne");
-                }
-            })
-            .then(bindr(Result.andThen, function (description) {
-                return canEdit(editor, description.frozen || false)
-                .then(function (ifCanEdit) {
-                    return ifCanEdit ? Ok(description) : Fail("frozen");
-                });
-            }))
+            key = key.toLowerCase();
+
+            return getPreviousKeyForEditing(key, editor)
+            .then(bindr(Result.andThen, editOnlyWhenPreviousKeyExists))
             .then(bindr(Result.map, function (description) {
                 const old_message = description.message;
                 const new_message = old_message.replace(regexp, replacement);
