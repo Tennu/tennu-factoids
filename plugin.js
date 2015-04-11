@@ -115,7 +115,7 @@ module.exports = {
                     return factoids.set(key, description)
                     .then(bindr(Result.map, function (description) {
                         client.note("FactoidsPlugin", format("Factoid: '%s' => [%s] %s", key, description.intent, description.message));
-                        return format("Learned factoid '%s'", key);
+                        return format("Learned factoid '%s'.", key);
                     }));
                 }
 
@@ -139,6 +139,18 @@ module.exports = {
                     }));
                 }
 
+                function alias (key, aliasedKey) {
+                    return factoids.set(key, {
+                        intent: "alias",
+                        message: aliasedKey, 
+                        editor: command.hostmask
+                    })
+                    .then(bindr(Result.map, function () {
+                        client.note("FactoidsPlugin", format("Factoid: '%s' => [alias] %s", key, aliasedKey));
+                        return format("Learned alias '%s' => '%s'.", key, aliasedKey);
+                    }));
+                }
+
                 return Promise.try(function () {
                     if (!fullkey) {
                         return Fail("bad-format-no-key");
@@ -152,10 +164,11 @@ module.exports = {
                 })
                 .then(bindr(Result.andThen, function () {
                     switch (modifier) {
-                        case "~": return edit(key, description)
+                        case "~": return edit(key, description);
                         case ":": return learn(key, format("%s is %s", key, description), "say");
                         case "!": return learn(key, description, "act");
                         case "+": return edit(key, format("s/$/%s/", description));
+                        case "@": return alias(key, description);
                         default: return learn(trim(fullkey), description, "say");
                     }
                 }))

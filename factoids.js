@@ -72,17 +72,21 @@ module.exports = function (databaseLocation, isEditorAdmin) {
 
     return {
         // String -> %Tennu.Message{}
-        get: function (key) {
+        get: function get (key) {
             const value = db.get(key.toLowerCase());
 
             if (!value || !value.message) {
                 return;
             }
 
-            return {
-                intent: value.intent,
-                message: value.message
-            };
+            if (value.intent === "alias") {
+                return get(value.message);
+            } else {
+                return {
+                    intent: value.intent,
+                    message: value.message
+                };
+            }
         },
 
         // String, %Factoid{} -> Result<%Factoid{}, String>

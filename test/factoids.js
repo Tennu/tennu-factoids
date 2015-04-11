@@ -99,4 +99,47 @@ describe("Factoids", function () {
             assert(replaceResult.isOk());
         });
     });
+
+    it("can have keys alias other keys", function () {
+        return factoids.set("sample keyword", {
+            intent: "say",
+            message: "sample description",
+            editor: "user"
+        })
+        .then(function (factoidResult) {
+            assert(factoidResult.isOk());
+        })
+        .then(function () {
+            return factoids.set("sample alias", {
+                intent: "alias",
+                message: "sample keyword", 
+                editor: "user!user@isp.net"
+            });
+        })
+        .then(function (aliasResult) {
+            assert(aliasResult.isOk());
+        })
+        .then(function () {
+            var factoid = factoids.get("sample alias");
+            assert(equal(factoid, {
+                intent: "say",
+                message: "sample description"
+            }));
+        });
+    });
+
+    it("can alias non-existent keys", function () {
+        return factoids.set("sample alias", {
+            intent: "alias",
+            message: "sample keyword", 
+            editor: "user!user@isp.net"
+        })
+        .then(function (aliasResult) {
+            assert(aliasResult.isOk());
+        })
+        .then(function () {
+            var factoid = factoids.get("sample alias");
+            assert(factoid === undefined);
+        });
+    });
 });

@@ -9,7 +9,7 @@ var logfn = debug ? console.log.bind(console) : function () {};
 
 var Plugin = require("../plugin");
 var Promise = require("bluebird");
-var result = require("r-result"); 
+var result = require("r-result");
 var Ok = result.Ok;
 var Fail = result.Fail;
 
@@ -61,7 +61,8 @@ describe("Factoids plugin", function () {
                 hostmask: "user!user@isp.net"
             })
             .then(function (response) {
-                assert(response === "Learned factoid 'x'");
+                logfn(inspect(response));
+                assert(response === "Learned factoid 'x'.");
             });
         });
 
@@ -70,9 +71,6 @@ describe("Factoids plugin", function () {
                 args: ["x", "=", "y"],
                 hostmask: "user!user@isp.net"
             })
-            .then(function (response) {
-                assert(response === "Learned factoid 'x'");
-            })
             .then(function () {
                 return factoid({
                     args: ["x"]
@@ -80,8 +78,48 @@ describe("Factoids plugin", function () {
             })
             .then(function (response) {
                 logfn(inspect(response));
-                assert(equal(response, { intent: 'say', message: 'y' }));
+                assert(equal(response, { intent: "say", message: "y" }));
             });
+        });
+    });
+
+    describe("Aliasing", function () {
+        it("can create an alias of a factoid", function () {
+            return learn({
+                args: ["x", "=", "y"],
+                hostmask: "user!user@isp.net"
+            })
+            .then(function () {
+                return learn({
+                    args: ["y", "@=", "x"],
+                    hostmask: "user!user@isp.net"
+                });
+            })
+            .then(function (response) {
+                logfn(inspect(response));
+                assert(response === "Learned alias 'y' => 'x'.");
+            });
+        });
+
+        it("can retrieve an alias of a factoid", function () {
+            return learn({
+                args: ["x", "=", "y"],
+                hostmask: "user!user@isp.net"
+            })
+            .then(function () {
+                return learn({
+                    args: ["y", "@=", "x"],
+                    hostmask: "user!user@isp.net"
+                });
+            })
+            .then(function () {
+                return factoid({
+                    args: ["y"]
+                });
+            })
+            .then(function (response) {
+                assert(equal(response, { intent: "say", message: "y" }));
+            })
         });
     });
 
