@@ -43,6 +43,7 @@ module.exports = {
         const commandTrigger = client.config("command-trigger");
         const factoidTrigger = client.config("factoids-trigger");
         const database = client.config("factoids-database");
+        const maxAliasDepth = client.config("factoids-max-alias-depth") || 3;
 
         const adminPlugin = client.getRole("admin");
         var requiresAdmin, isAdmin;
@@ -53,7 +54,7 @@ module.exports = {
             isAdmin = function () { return Promise.resolve(false); }
         }
 
-        const factoids = Factoids(database, isAdmin);
+        const factoids = Factoids(database, isAdmin, maxAliasDepth);
 
         // Privmsg -> Bool
         function isFactoidRequest(privmsg) {
@@ -66,20 +67,19 @@ module.exports = {
         }
 
         function getFactoid (key, respondWhenNoKey) {
-            client.note("PluginFactoids", format("Getting factoid: %s", key));
-            const value = factoids.get(key);
-
-            if (value) {
-                return value;
-            }
-            
-            client.note("PluginFactoids", format("Key '%s' not found.", key));
-
-            if (respondWhenNoKey) {
-                return format("No such factoid '%s' found.", key);
-            } else {
-                return /* no response */;
-            }
+            return factoids.get(key)
+            .unwrapOrElse(function (failureReason) {
+                switch (failureReason) {
+                    case "max-alias-depth-reached":
+                        return "Error: Max alias depth reached.";
+                    case "no-factoid":
+                        client.note("PluginFactoids", format("Key '%s' not found.", key));
+                        return respondWhenNoKey ? format("No such factoid '%s' found.", key) : undefined;
+                    default:
+                        client.error("PluginFactoids", format("Unhandled failure reason in !get: %s", failureReason));
+                        return format("Error: Unhandled failure reason in getting factoid ('%s').", failureReason);
+                }
+            });
         }
 
         const handlers = {
@@ -271,10 +271,16 @@ module.exports = {
                     "{{!}}learn key != action",
                     "As the initial, but has the bot act the action.",
                     " ",
+                    "{{!}}learn key @= other key",
+                    "Makes key an alias for `other key`.",
+                    format("There is a maximum alias depth of %s.", maxAliasDepth),
+                    "Modifying the value with += or ~= modifies which key is being aliased,",
+                    "not the value of the aliased key.",
+                    " ",
                     "{{!}}learn key += amendment",
                     "Modifies an existing factoid to add more information.",
                     " ",
-                    "{{!}}learn ~= s/regexp/replacement/flags",
+                    "{{!}}learn key ~= s/regexp/replacement/flags",
                     "Modifies an existing factoid by finding the first match",
                     "of the regexp in the current factoid, and replacing it",
                     "with the replacement.",

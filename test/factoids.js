@@ -19,11 +19,14 @@ describe("Factoids", function () {
     var factoids;
 
     beforeEach(function () {
-        factoids = Factoids("", function () { return true; });
+        factoids = Factoids("", function () { return true; }, 3);
     });
 
-    it("getting a key that was never set returns `undefined`", function () {
-        assert(factoids.get("never set") === undefined);
+    it("getting a key that was never set returns `Fail('no-factoid')`", function () {
+        var result = factoids.get("never set");
+        logfn(inspect(result));
+        assert(result.isFail());
+        assert(result.fail() === "no-factoid");
     });
 
     it("setting a key that was never set returns set factoid value", function () {
@@ -44,7 +47,7 @@ describe("Factoids", function () {
         });
     });
 
-    it ("getting a key of a set factoid returns the set factoid's value", function () {
+    it ("getting a key of a set factoid returns Ok(the set factoid's value)", function () {
         return factoids.set("sample keyword", {
             intent: "say",
             message: "sample description",
@@ -54,15 +57,18 @@ describe("Factoids", function () {
             assert(factoidResult.isOk());
         })
         .then(function () {
-            var factoid = factoids.get("sample keyword");
+            var result = factoids.get("sample keyword");
+            assert(result.isOk());
+            var factoid = result.ok();
             logfn(inspect(factoid));
-
-            assert(factoid.intent === "say");
-            assert(factoid.message === "sample description");
+            assert(equal(factoid, {
+                intent: "say",
+                message: "sample description"
+            }));
         });
     });
 
-    it ("getting a key of a deleted factoid returns `undefined`", function () {
+    it ("getting a key of a deleted factoid returns `Fail('no-factoid')`", function () {
         return factoids.set("sample keyword", {
             intent: "say",
             message: "sample description",
@@ -79,7 +85,9 @@ describe("Factoids", function () {
             assert(deleteResult.isOk());
         })
         .then(function () {
-            assert(factoids.get("sample keyword") === undefined);
+            var result = factoids.get("sample keyword");
+            assert(result.isFail());
+            assert(result.fail() === "no-factoid");
         });
     });
 
@@ -120,7 +128,9 @@ describe("Factoids", function () {
             assert(aliasResult.isOk());
         })
         .then(function () {
-            var factoid = factoids.get("sample alias");
+            var result = factoids.get("sample alias");
+            assert(result.isOk());
+            var factoid = result.ok();
             assert(equal(factoid, {
                 intent: "say",
                 message: "sample description"
@@ -138,8 +148,26 @@ describe("Factoids", function () {
             assert(aliasResult.isOk());
         })
         .then(function () {
-            var factoid = factoids.get("sample alias");
-            assert(factoid === undefined);
+            var result = factoids.get("sample alias");
+            assert(result.isFail());
+            assert(result.fail() === "no-factoid");
+        });
+    });
+
+    it("has a maximum alias depth", function () {
+        // This factoid aliases itself.
+        return factoids.set("sample alias", {
+            intent: "alias",
+            message: "sample alias",
+            editor: "user!user@isp.net"
+        })
+        .then(function (aliasResult) {
+            assert(aliasResult.isOk())
+        })
+        .then(function () {
+            var result = factoids.get("sample alias");
+            assert(result.isFail());
+            assert(result.fail() === "max-alias-depth-reached");
         });
     });
 });

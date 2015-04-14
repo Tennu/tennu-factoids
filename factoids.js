@@ -38,7 +38,7 @@ const bindr = function (fn, args) {
     };
 };
 
-module.exports = function (databaseLocation, isEditorAdmin) {
+module.exports = function (databaseLocation, isEditorAdmin, maxAliasDepth) {
     const db = Dirty(databaseLocation);
 
     // (String, Hostmask) -> Result<undefined | %Factoid{}, "frozen">
@@ -73,20 +73,28 @@ module.exports = function (databaseLocation, isEditorAdmin) {
     return {
         // String -> %Tennu.Message{}
         get: function get (key) {
-            const value = db.get(key.toLowerCase());
+            function getRecursively(key, aliasDepth) {
+                if (aliasDepth == maxAliasDepth) {
+                    return Fail("max-alias-depth-reached");
+                }
 
-            if (!value || !value.message) {
-                return;
+                const value = db.get(key.toLowerCase());
+
+                if (!value || !value.message) {
+                    return Fail("no-factoid");
+                }
+
+                if (value.intent === "alias") {
+                    return getRecursively(value.message, aliasDepth + 1);
+                } else {
+                    return Ok({
+                        intent: value.intent,
+                        message: value.message
+                    });
+                }
             }
 
-            if (value.intent === "alias") {
-                return get(value.message);
-            } else {
-                return {
-                    intent: value.intent,
-                    message: value.message
-                };
-            }
+            return getRecursively(key, 0);
         },
 
         // String, %Factoid{} -> Result<%Factoid{}, String>

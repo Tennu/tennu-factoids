@@ -121,6 +121,22 @@ describe("Factoids plugin", function () {
                 assert(equal(response, { intent: "say", message: "y" }));
             })
         });
+
+        it("errors out after max alias depth reached", function () {
+            return learn({
+                args: ["x", "@=", "x"],
+                hostmask: "user!user@isp.net"
+            })
+            .then(function () {
+                return factoid({
+                    args: ["x"]
+                });
+            })
+            .then(function (response) {
+                logfn(inspect(response));
+                assert(response === "Error: Max alias depth reached.");
+            });
+        });
     });
 
     describe("Failure handling", function () {
