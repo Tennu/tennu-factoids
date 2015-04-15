@@ -139,6 +139,43 @@ describe("Factoids plugin", function () {
         });
     });
 
+    describe("editing", function () {
+        it.skip("can do simple find and replace", function () {
+
+        });
+
+        it.skip("can append simple text", function () {
+
+        });
+
+        it("can append a URL", function () {
+            return learn({
+                args: ["x", "=", "y"],
+                hostmask: "user!user@isp.net"  
+            })
+            .then(function () {
+                return learn({
+                    args: ["x", "+=", "| https://tennu.github.io/"],
+                    hostmask: "user!user@isp.net"
+                });
+            })
+            .then(function (replaceResponse) {
+                logfn(inspect(replaceResponse));
+                assert(replaceResponse === "Successfully did replacement on 'x'.");
+
+                var getResponse = factoid({
+                    args: ["x"]
+                });
+
+                logfn(inspect(getResponse));
+                assert(equal(getResponse, {
+                    intent: "say",
+                    message: "y | https://tennu.github.io/"
+                }));
+            });
+        });
+    });
+
     describe("@", function () {
         it("tells the user specified after the @ the factoid", function () {
             return learn({

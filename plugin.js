@@ -57,12 +57,12 @@ module.exports = {
         const factoids = Factoids(database, isAdmin, maxAliasDepth);
 
         // Privmsg -> Bool
-        function isFactoidRequest(privmsg) {
+        function isFactoidRequest (privmsg) {
             return privmsg.message.indexOf(factoidTrigger) === 0;
         }
 
         // String -> String
-        function getFactoidKey(message) {
+        function getFactoidKey (message) {
             return trim(message.slice(factoidTrigger.length).replace(/\s+/g, " "));
         }
 
@@ -133,19 +133,44 @@ module.exports = {
                 }
 
                 function edit (key, replacement) {
-                    replacement = trim(replacement).split("/");
+                    function extractReplacement (replacement) {
+                        // This regular expression is made of layers.
+                        // The outer layer is r### ^s/_/_/_$ ###
+                        // The inner layer is r### (([^/]|\/)*) ###
+                        // The third part just allows 'g's and 'i's.
+                        // The inner layer is for allowing anything except
+                        // for "/" except when escaped e.g. "\/".
+                        // Because "\" and "/" are special characters, they're
+                        // escaped in the regexp, making it a huge mess of
+                        // forwards and backwards slashes.
+                        //
+                        // The match will return `null` if it fails to match,
+                        // but if it succeeds, it'll return an array-like where
+                        // the numbers chosen in the returned object are the
+                        // matched groups. The 0th element is the entire match
+                        // while the even elements are the last instance of the
+                        // inner parenthesis group, which is the last character
+                        // of the outer parenthesis group of the inner layer.
+                        replacement = replacement.match(/^s\/(([^\/]|\\\/)*)\/(([^\/]|\\\/)*)\/([gi]*)$/);
 
-                    if (replacement.length !== 4 || replacement[0] !== "s") {
-                        return Promise.resolve(Fail("bad-replace-format"));
+                        if (replacement === null) {
+                            return Fail("bad-replace-format");
+                        } else {
+                            return Ok({
+                                find: replacement[1],
+                                replace: replacement[3].replace(/\\\//g, "/"),
+                                flags: replacement[5]
+                            });
+                        }
                     }
 
-                    const search = replacement[1];
-                    const replaceText = replacement[2];
-                    const flags = trim(replacement[3]);
-
-                    const regexp = new RegExp(search, flags);
-
-                    return factoids.replace(key, regexp, replaceText, command.hostmask)
+                    return Promise.try(function () {
+                        return extractReplacement(trim(replacement))
+                        .andThen(function (replacementObject) {
+                            const regexp = new RegExp(replacementObject.find, replacementObject.flags);
+                            return factoids.replace(key, regexp, replacementObject.replace, command.hostmask);
+                        });
+                    })
                     .then(bindr(Result.map, function (description) {
                         client.note("FactoidsPlugin", format("Factoid: '%s' => [%s] %s", key, description.intent, description.message));
                         return format("Successfully did replacement on '%s'.", key);
@@ -180,7 +205,7 @@ module.exports = {
                         case "~": return edit(key, description);
                         case ":": return learn(key, format("%s is %s", key, description), "say");
                         case "!": return learn(key, description, "act");
-                        case "+": return edit(key, format("s/$/%s/", description));
+                        case "+": return edit(key, format("s/$/ %s/", description.replace(/\//g, "\\/")));
                         case "@": return alias(key, description);
                         default: return learn(trim(fullkey), description, "say");
                     }
@@ -297,11 +322,14 @@ module.exports = {
                     " ",
                     "{{!}}learn key += amendment",
                     "Modifies an existing factoid to add more information.",
+                    "A space is automatically added between the prior description"
+                    "and the amended text."
                     " ",
                     "{{!}}learn key ~= s/regexp/replacement/flags",
                     "Modifies an existing factoid by finding the first match",
                     "of the regexp in the current factoid, and replacing it",
                     "with the replacement.",
+                    "Escape '/' by doing '\\/'."
                     "Flag: 'g' - Replaces all occurences of the RegExp",
                     "Flag: 'i' - Makes the RegExp case insensitive.",
                     "See also: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp"
