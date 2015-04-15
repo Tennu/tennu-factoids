@@ -66,8 +66,19 @@ module.exports = {
             return trim(message.slice(factoidTrigger.length).replace(/\s+/g, " "));
         }
 
-        function getFactoid (key, respondWhenNoKey) {
-            return factoids.get(key)
+        function getFactoid (request, respondWhenNoKey) {
+            var split = splitAt(request, "@");
+            var key = trim(split[0]);
+            var who = trim(split[1]);
+
+            var response = factoids.get(key)
+            .map(function (response) {
+                if (who && response.intent === "say") {
+                    response.message = format("%s: %s", who, response.message);
+                }
+
+                return response;
+            })
             .unwrapOrElse(function (failureReason) {
                 switch (failureReason) {
                     case "max-alias-depth-reached":
@@ -80,6 +91,8 @@ module.exports = {
                         return format("Error: Unhandled failure reason in getting factoid ('%s').", failureReason);
                 }
             });
+
+            return response;
         }
 
         const handlers = {

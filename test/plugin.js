@@ -139,6 +139,44 @@ describe("Factoids plugin", function () {
         });
     });
 
+    describe("@", function () {
+        it("tells the user specified after the @ the factoid", function () {
+            return learn({
+                args: ["x", "=", "y"],
+                hostmask: "user!user@isp.net"
+            })
+            .then(function () {
+                var response = factoid({
+                    args: ["x", "@", "user"]
+                });
+
+                logfn(inspect(response));
+                assert(equal(response, {
+                    intent: "say",
+                    message: "user: y"
+                }));
+            });
+        });
+
+        it("is ignored when the intent is 'act'", function () {
+            return learn({
+                args: ["x", "!=", "y"],
+                hostmask: "user!user@isp.net"
+            })
+            .then(function () {
+                var response = factoid({
+                    args: ["x", "@", "user"]
+                });
+
+                logfn(inspect(response));
+                assert(equal(response, {
+                    intent: "act",
+                    message: "y"
+                }));
+            });
+        })
+    });
+
     describe("Failure handling", function () {
         describe("!factoid", function () {
             it("needs to be passed a key", function () {

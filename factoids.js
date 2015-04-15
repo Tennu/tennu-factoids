@@ -70,6 +70,10 @@ module.exports = function (databaseLocation, isEditorAdmin, maxAliasDepth) {
         }
     };
 
+    const disallowAtInKey = function (key) {
+        return key.indexOf("@") === -1 ? Ok() : Fail("at-symbol-in-key");
+    };
+
     return {
         // String -> %Tennu.Message{}
         get: function get (key) {
@@ -104,7 +108,10 @@ module.exports = function (databaseLocation, isEditorAdmin, maxAliasDepth) {
                     throw new Error("An intent, message, and editor are all needed to set a new factoid.");
                 }
 
-                return getPreviousKeyForEditing(key, value.editor);
+                return Result.and(
+                    disallowAtInKey(key),
+                    getPreviousKeyForEditing(key, value.editor)
+                );
             })
             .then(bindr(Result.map, function (previousValue) {
                 value = {

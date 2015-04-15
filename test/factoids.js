@@ -170,4 +170,17 @@ describe("Factoids", function () {
             assert(result.fail() === "max-alias-depth-reached");
         });
     });
+
+    it("disallows keys with '@'s in them", function () {
+        return factoids.set("a @ b", {
+            intent: "say",
+            message: "doesn't matter",
+            editor: "user!user@isp.net"
+        })
+        .then(function (result) {
+            assert(result.isFail());
+            var failure = result.fail();
+            assert(failure === "at-symbol-in-key");
+        });
+    });
 });
