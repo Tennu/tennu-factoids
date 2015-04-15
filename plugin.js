@@ -261,6 +261,9 @@ module.exports = {
                 "Look up a factoid.",
                 "Factoids are small messages this bot responds with.",
                 "",
+                "You may add an '@ nick' to the end to have the bot say",
+                "the response to that user.",
+                "",
                 "See also: {{!}}learn, {{!}}forget"
             ],
 
@@ -270,7 +273,9 @@ module.exports = {
                     " ",
                     "Adds a factoid to the factoids database.",
                     "This bot also supports a modifier before the `=`.",
-                    "To see them, do {{!}}help learn formats"
+                    "To see them, do {{!}}help learn formats",
+                    "",
+                    "Keys may consist of all characters other than `=` and `@`."
                 ],
 
                 "formats": [
