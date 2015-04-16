@@ -322,14 +322,14 @@ module.exports = {
                     " ",
                     "{{!}}learn key += amendment",
                     "Modifies an existing factoid to add more information.",
-                    "A space is automatically added between the prior description"
-                    "and the amended text."
+                    "A space is automatically added between the prior description",
+                    "and the amended text.",
                     " ",
                     "{{!}}learn key ~= s/regexp/replacement/flags",
                     "Modifies an existing factoid by finding the first match",
                     "of the regexp in the current factoid, and replacing it",
                     "with the replacement.",
-                    "Escape '/' by doing '\\/'."
+                    "Escape '/' by doing '\\/'.",
                     "Flag: 'g' - Replaces all occurences of the RegExp",
                     "Flag: 'i' - Makes the RegExp case insensitive.",
                     "See also: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp"
