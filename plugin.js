@@ -167,7 +167,12 @@ module.exports = {
                     return Promise.try(function () {
                         return extractReplacement(trim(replacement))
                         .andThen(function (replacementObject) {
-                            const regexp = new RegExp(replacementObject.find, replacementObject.flags);
+                            try {
+                                const regexp = new RegExp(replacementObject.find, replacementObject.flags);
+                            } catch (e) {
+                                return Fail("bad-replace-regexp");
+                            }
+
                             return factoids.replace(key, regexp, replacementObject.replace, command.hostmask);
                         });
                     })
@@ -217,6 +222,7 @@ module.exports = {
                         case "unchanged":           return format("Replacement on '%s' had no effect.", key);
                         case "no-message-left":     return format("Cannot edit '%s'. Would leave factoid empty. Use %sforget instead.", key, commandTrigger);
                         case "bad-replace-format":  return format("Invalid replacement format. See %shelp learn replace for format.", commandTrigger);
+                        case "bad-replace-regexp":  return "Invalid replacement format. RegExp invalid.";
                         case "bad-format-no-key":   return "Invalid format. No key specified.";
                         case "bad-format-no-desc":  return "Invalid format. No description specified.";
                         default:

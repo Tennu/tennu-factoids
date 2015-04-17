@@ -174,6 +174,24 @@ describe("Factoids plugin", function () {
                 }));
             });
         });
+
+        it("needs a proper RegExp", function () {
+            return learn({
+                args: ["x", "=", "[y]"],
+                hostmask: "user!user@isp.net"  
+            })
+            .then(function () {
+                return learn({
+                    // Note that `[` in a RegExp has special meaning and has to be closed.
+                    args: ["x", "~=", "s/[/</"],
+                    hostmask: "user!user@isp.net"
+                });
+            })
+            .then(function (replaceResponse) {
+                logfn(inspect(replaceResponse));
+                assert(replaceResponse === "Invalid replacement format. RegExp invalid.");
+            });
+        });
     });
 
     describe("@", function () {
