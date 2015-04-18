@@ -16,171 +16,213 @@ var Fail = result.Fail;
 var isoDateRegex = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d.\d{3}Z$/;
 
 describe("Factoids", function () {
-    var factoids;
+    describe("Normal operation", function () {
+        var factoids;
 
-    beforeEach(function () {
-        factoids = Factoids("", function () { return true; }, 3);
-    });
-
-    it("getting a key that was never set returns `Fail('no-factoid')`", function () {
-        var result = factoids.get("never set");
-        logfn(inspect(result));
-        assert(result.isFail());
-        assert(result.fail() === "no-factoid");
-    });
-
-    it("setting a key that was never set returns set factoid value", function () {
-        return factoids.set("sample keyword", {
-            intent: "say",
-            message: "sample description",
-            editor: "user"
-        })
-        .then(function (factoidResult) {
-            assert(factoidResult.isOk());
-            var factoid = factoidResult.ok();
-
-            assert(factoid.intent === "say");
-            assert(factoid.message === "sample description");
-            assert(factoid.editor === "user");
-            assert(isoDateRegex.test(factoid.time));
-            assert(factoid.frozen === false);
+        beforeEach(function () {
+            factoids = Factoids("", function () { return true; }, 3);
         });
-    });
 
-    it ("getting a key of a set factoid returns Ok(the set factoid's value)", function () {
-        return factoids.set("sample keyword", {
-            intent: "say",
-            message: "sample description",
-            editor: "user"
-        })
-        .then(function (factoidResult) {
-            assert(factoidResult.isOk());
-        })
-        .then(function () {
-            var result = factoids.get("sample keyword");
-            assert(result.isOk());
-            var factoid = result.ok();
-            logfn(inspect(factoid));
-            assert(equal(factoid, {
-                intent: "say",
-                message: "sample description"
-            }));
-        });
-    });
-
-    it ("getting a key of a deleted factoid returns `Fail('no-factoid')`", function () {
-        return factoids.set("sample keyword", {
-            intent: "say",
-            message: "sample description",
-            editor: "user"
-        })
-        .then(function (factoidResult) {
-            assert(factoidResult.isOk());
-        })
-        .then(function () {
-            return factoids.delete("sample keyword");
-        })
-        .then(function (deleteResult) {
-            logfn(inspect(deleteResult));
-            assert(deleteResult.isOk());
-        })
-        .then(function () {
-            var result = factoids.get("sample keyword");
+        it("getting a key that was never set returns `Fail('no-factoid')`", function () {
+            var result = factoids.get("never set");
+            logfn(inspect(result));
             assert(result.isFail());
             assert(result.fail() === "no-factoid");
         });
-    });
 
-    it("can replace one description with a regexp change of another", function () {
-        return factoids.set("sample keyword", {
-            intent: "say",
-            message: "sample description",
-            editor: "user"
-        })
-        .then(function (factoidResult) {
-            assert(factoidResult.isOk());
-        })
-        .then(function () {
-            return factoids.replace("sample keyword", /sample/, "changed", "user");
-        })
-        .then(function (replaceResult) {
-            assert(replaceResult.isOk());
+        it("setting a key that was never set returns set factoid value", function () {
+            return factoids.set("sample keyword", {
+                intent: "say",
+                message: "sample description",
+                editor: "user"
+            })
+            .then(function (factoidResult) {
+                assert(factoidResult.isOk());
+                var factoid = factoidResult.ok();
+
+                assert(factoid.intent === "say");
+                assert(factoid.message === "sample description");
+                assert(factoid.editor === "user");
+                assert(isoDateRegex.test(factoid.time));
+                assert(factoid.frozen === false);
+            });
         });
-    });
 
-    it("can have keys alias other keys", function () {
-        return factoids.set("sample keyword", {
-            intent: "say",
-            message: "sample description",
-            editor: "user"
-        })
-        .then(function (factoidResult) {
-            assert(factoidResult.isOk());
-        })
-        .then(function () {
+        it ("getting a key of a set factoid returns Ok(the set factoid's value)", function () {
+            return factoids.set("sample keyword", {
+                intent: "say",
+                message: "sample description",
+                editor: "user"
+            })
+            .then(function (factoidResult) {
+                assert(factoidResult.isOk());
+            })
+            .then(function () {
+                var result = factoids.get("sample keyword");
+                assert(result.isOk());
+                var factoid = result.ok();
+                logfn(inspect(factoid));
+                assert(equal(factoid, {
+                    intent: "say",
+                    message: "sample description"
+                }));
+            });
+        });
+
+        it ("getting a key of a deleted factoid returns `Fail('no-factoid')`", function () {
+            return factoids.set("sample keyword", {
+                intent: "say",
+                message: "sample description",
+                editor: "user"
+            })
+            .then(function (factoidResult) {
+                assert(factoidResult.isOk());
+            })
+            .then(function () {
+                return factoids.delete("sample keyword");
+            })
+            .then(function (deleteResult) {
+                logfn(inspect(deleteResult));
+                assert(deleteResult.isOk());
+            })
+            .then(function () {
+                var result = factoids.get("sample keyword");
+                assert(result.isFail());
+                assert(result.fail() === "no-factoid");
+            });
+        });
+
+        it("can replace one description with a regexp change of another", function () {
+            return factoids.set("sample keyword", {
+                intent: "say",
+                message: "sample description",
+                editor: "user"
+            })
+            .then(function (factoidResult) {
+                assert(factoidResult.isOk());
+            })
+            .then(function () {
+                return factoids.replace("sample keyword", /sample/, "changed", "user");
+            })
+            .then(function (replaceResult) {
+                assert(replaceResult.isOk());
+            });
+        });
+
+        it("can have keys alias other keys", function () {
+            return factoids.set("sample keyword", {
+                intent: "say",
+                message: "sample description",
+                editor: "user"
+            })
+            .then(function (factoidResult) {
+                assert(factoidResult.isOk());
+            })
+            .then(function () {
+                return factoids.set("sample alias", {
+                    intent: "alias",
+                    message: "sample keyword", 
+                    editor: "user!user@isp.net"
+                });
+            })
+            .then(function (aliasResult) {
+                assert(aliasResult.isOk());
+            })
+            .then(function () {
+                var result = factoids.get("sample alias");
+                assert(result.isOk());
+                var factoid = result.ok();
+                assert(equal(factoid, {
+                    intent: "say",
+                    message: "sample description"
+                }));
+            });
+        });
+
+        it("can alias non-existent keys", function () {
             return factoids.set("sample alias", {
                 intent: "alias",
                 message: "sample keyword", 
                 editor: "user!user@isp.net"
+            })
+            .then(function (aliasResult) {
+                assert(aliasResult.isOk());
+            })
+            .then(function () {
+                var result = factoids.get("sample alias");
+                assert(result.isFail());
+                assert(result.fail() === "no-factoid");
             });
-        })
-        .then(function (aliasResult) {
-            assert(aliasResult.isOk());
-        })
-        .then(function () {
-            var result = factoids.get("sample alias");
-            assert(result.isOk());
-            var factoid = result.ok();
-            assert(equal(factoid, {
+        });
+
+        it("has a maximum alias depth", function () {
+            // This factoid aliases itself.
+            return factoids.set("sample alias", {
+                intent: "alias",
+                message: "sample alias",
+                editor: "user!user@isp.net"
+            })
+            .then(function (aliasResult) {
+                assert(aliasResult.isOk())
+            })
+            .then(function () {
+                var result = factoids.get("sample alias");
+                assert(result.isFail());
+                assert(result.fail() === "max-alias-depth-reached");
+            });
+        });
+
+        it("disallows keys with '@'s in them", function () {
+            return factoids.set("a @ b", {
                 intent: "say",
-                message: "sample description"
-            }));
+                message: "doesn't matter",
+                editor: "user!user@isp.net"
+            })
+            .then(function (result) {
+                assert(result.isFail());
+                var failure = result.fail();
+                assert(failure === "at-symbol-in-key");
+            });
         });
     });
 
-    it("can alias non-existent keys", function () {
-        return factoids.set("sample alias", {
-            intent: "alias",
-            message: "sample keyword", 
-            editor: "user!user@isp.net"
-        })
-        .then(function (aliasResult) {
-            assert(aliasResult.isOk());
-        })
-        .then(function () {
-            var result = factoids.get("sample alias");
-            assert(result.isFail());
-            assert(result.fail() === "no-factoid");
-        });
-    });
+    describe("Vandalism protection", function () {
+        var factoids;
 
-    it("has a maximum alias depth", function () {
-        // This factoid aliases itself.
-        return factoids.set("sample alias", {
-            intent: "alias",
-            message: "sample alias",
-            editor: "user!user@isp.net"
-        })
-        .then(function (aliasResult) {
-            assert(aliasResult.isOk())
-        })
-        .then(function () {
-            var result = factoids.get("sample alias");
-            assert(result.isFail());
-            assert(result.fail() === "max-alias-depth-reached");
+        beforeEach(function () {
+            factoids = Factoids("", function (hostmask) { return hostmask === "admin!admin@isp.net"; }, 3)
         });
-    });
 
-    it("disallows keys with '@'s in them", function () {
-        return factoids.set("a @ b", {
-            intent: "say",
-            message: "doesn't matter",
-            editor: "user!user@isp.net"
-        })
-        .then(function (result) {
-            assert(result.isFail());
-            var failure = result.fail();
-            assert(failure === "at-symbol-in-key");
+        it("disallows normal users from setting locked factoids", function () {
+            factoids.freeze("locked");
+
+            return setResult = factoids.set("locked", {
+                intent: "say",
+                message: "doesn't matter",
+                editor: "user!user@isp.net"
+            })
+            .then(function (result) {
+                assert(result.isFail());
+                var failure = result.fail();
+                logfn(failure);
+                assert(failure === "frozen");
+            })
+        });
+
+        it("disallows normal users from setting locked factoids with different case", function () {
+            factoids.freeze("locked");
+
+            return setResult = factoids.set("Locked", {
+                intent: "say",
+                message: "doesn't matter",
+                editor: "user!user@isp.net"
+            })
+            .then(function (result) {
+                assert(result.isFail());
+                var failure = result.fail();
+                logfn(failure);
+                assert(failure === "frozen");
+            });
         });
     });
 });

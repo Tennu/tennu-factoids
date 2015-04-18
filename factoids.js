@@ -43,7 +43,7 @@ module.exports = function (databaseLocation, isEditorAdmin, maxAliasDepth) {
 
     // (String, Hostmask) -> Result<undefined | %Factoid{}, "frozen">
     const getPreviousKeyForEditing = function (key, editor) {
-        const previousValue = db.get(key);
+        const previousValue = db.get(key.toLowerCase());
 
         return new Promise(function (resolve, reject) {
             // If there is no previous value, then
