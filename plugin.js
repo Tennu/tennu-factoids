@@ -42,7 +42,7 @@ module.exports = {
     init: function (client, imports) {
         const commandTrigger = client.config("command-trigger");
         const factoidTrigger = client.config("factoids-trigger");
-        const database = client.config("factoids-database");
+        const databaseLocation = client.config("factoids-database");
         const maxAliasDepth = client.config("factoids-max-alias-depth") || 3;
         const daemon = client.config("daemon");
 
@@ -70,7 +70,7 @@ module.exports = {
         }();
 
         const factoids = Factoids({
-            database: database, 
+            databaseLocation: databaseLocation, 
             isEditorAdmin: isAdmin,
             maxAliasDepth: maxAliasDepth,
             beforeUpdate: beforeUpdate
