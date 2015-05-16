@@ -44,6 +44,7 @@ module.exports = {
         const factoidTrigger = client.config("factoids-trigger");
         const database = client.config("factoids-database");
         const maxAliasDepth = client.config("factoids-max-alias-depth") || 3;
+        const daemon = client.config("daemon");
 
         const adminPlugin = client.getRole("admin");
         var requiresAdmin, isAdmin;
@@ -54,7 +55,26 @@ module.exports = {
             isAdmin = function () { return Promise.resolve(false); }
         }
 
-        const factoids = Factoids(database, isAdmin, maxAliasDepth);
+        const beforeUpdate = function () {
+            if (daemon !== "twitch") {
+                return Ok;
+            }
+
+            return function (factoid) {
+                if (factoid.intent === "say" && factoid.message[0] === "!") {
+                    return Fail("maybe-twitch-command");
+                } else {
+                    return Ok(factoid);
+                }
+            };
+        }();
+
+        const factoids = Factoids({
+            database: database, 
+            isEditorAdmin: isAdmin,
+            maxAliasDepth: maxAliasDepth,
+            beforeUpdate: beforeUpdate
+        });
 
         // Privmsg -> Bool
         function isFactoidRequest (privmsg) {
@@ -218,13 +238,14 @@ module.exports = {
                 .then(bindr(Result.unwrapOrElse, function (failureReason) {
                     switch (failureReason) {
                         case "dne":                 return format("Cannot edit '%s'. Factoid does not exist.", key);
-                        case "frozen":              return format("Cannot edit '%s'. Factoid is locked.", key);
-                        case "unchanged":           return format("Replacement on '%s' had no effect.", key);
-                        case "no-message-left":     return format("Cannot edit '%s'. Would leave factoid empty. Use %sforget instead.", key, commandTrigger);
-                        case "bad-replace-format":  return format("Invalid replacement format. See %shelp learn replace for format.", commandTrigger);
-                        case "bad-replace-regexp":  return "Invalid replacement format. RegExp invalid.";
-                        case "bad-format-no-key":   return "Invalid format. No key specified.";
-                        case "bad-format-no-desc":  return "Invalid format. No description specified.";
+                        case "frozen":               return format("Cannot edit '%s'. Factoid is locked.", key);
+                        case "unchanged":            return format("Replacement on '%s' had no effect.", key);
+                        case "no-message-left":      return format("Cannot edit '%s'. Would leave factoid empty. Use %sforget instead.", key, commandTrigger);
+                        case "bad-replace-format":   return format("Invalid replacement format. See %shelp learn replace for format.", commandTrigger);
+                        case "bad-replace-regexp":   return "Invalid replacement format. RegExp invalid.";
+                        case "bad-format-no-key":    return "Invalid format. No key specified.";
+                        case "bad-format-no-desc":   return "Invalid format. No description specified.";
+                        case "maybe-twitch-command": return "Disallowed! Factoid message could be a Twitch command.";
                         default:
                             client.error("PluginFactoids", format("Unhandled failure reason in !learn: %s", failureReason));
                             return format("Error: Unhandled failure reason in text replacement ('%s').", failureReason);

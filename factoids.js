@@ -38,12 +38,29 @@ const bindr = function (fn, args) {
     };
 };
 
-module.exports = function (databaseLocation, isEditorAdmin, maxAliasDepth) {
+module.exports = function (options) {
+    const databaseLocation = options.databaseLocation;
+    const isEditorAdmin = options.isEditorAdmin;
+    const maxAliasDepth = options.maxAliasDepth;
+    const beforeUpdate = options.beforeUpdate;
+
+    if (typeof isEditorAdmin !== "function") {
+        throw new Error("isEditorAdmin property must be a function.");
+    }
+
+    if (typeof maxAliasDepth !== "number" || maxAliasDepth === Infinity) {
+        throw new Error("maxAliasDepth property must be a finite positive integer.");
+    }
+
+    if (typeof beforeUpdate !== "function") {
+        throw new Error("beforeUpdate property must be a function.");
+    }
+
     const db = Dirty(databaseLocation);
 
     // (String, Hostmask) -> Result<undefined | %Factoid{}, "frozen">
     const getPreviousKeyForEditing = function (key, editor) {
-        const previousValue = db.get(key.toLowerCase());
+        const previousValue = db.get(key);
 
         return new Promise(function (resolve, reject) {
             // If there is no previous value, then
@@ -70,7 +87,7 @@ module.exports = function (databaseLocation, isEditorAdmin, maxAliasDepth) {
         }
     };
 
-    const disallowAtInKey = function (key) {
+    const disallowAtCharacterInKey = function (key) {
         return key.indexOf("@") === -1 ? Ok() : Fail("at-symbol-in-key");
     };
 
@@ -103,26 +120,30 @@ module.exports = function (databaseLocation, isEditorAdmin, maxAliasDepth) {
 
         // String, %Factoid{} -> Result<%Factoid{}, String>
         set: function (key, value) {
+            key = key.toLowerCase();
+
             return Promise.try(function () {
                 if (!(value.intent && value.message && value.editor)) {
                     throw new Error("An intent, message, and editor are all needed to set a new factoid.");
                 }
 
                 return Result.and(
-                    disallowAtInKey(key),
+                    disallowAtCharacterInKey(key),
                     getPreviousKeyForEditing(key, value.editor)
                 );
             })
             .then(bindr(Result.map, function (previousValue) {
-                value = {
+                return {
                     intent: value.intent,
                     message: value.message,
                     editor: value.editor,
                     time: now(),
                     frozen: previousValue ? previousValue.frozen : false
                 };
-
-                db.set(key.toLowerCase(), value);
+            }))
+            .then(bindr(Result.andThen, beforeUpdate))
+            .then(bindr(Result.map, function (value) {
+                db.set(key, value);
 
                 return value;
             }));
@@ -165,9 +186,12 @@ module.exports = function (databaseLocation, isEditorAdmin, maxAliasDepth) {
                 description.editor = editor;
                 description.time = now();
 
-                db.set(key, description);
-
-                return Ok(description);
+                return description;
+            }))
+            .then(bindr(Result.andThen, beforeUpdate))
+            .then(bindr(Result.map, function (value) {
+                db.set(key, value);
+                return value;
             }));
         },
 

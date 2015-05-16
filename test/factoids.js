@@ -1,4 +1,4 @@
-// var sinon = require("sinon");
+var sinon = require("sinon");
 var assert = require("better-assert");
 var equal = require("deep-eql");
 var inspect = require("util").inspect;
@@ -20,7 +20,12 @@ describe("Factoids", function () {
         var factoids;
 
         beforeEach(function () {
-            factoids = Factoids("", function () { return true; }, 3);
+            factoids = Factoids({
+                databaseLocation: "",
+                isEditorAdmin: function () { return true; }, 
+                maxAliasDepth: 3,
+                beforeUpdate: Ok
+            });
         });
 
         it("getting a key that was never set returns `Fail('no-factoid')`", function () {
@@ -166,7 +171,13 @@ describe("Factoids", function () {
                 assert(aliasResult.isOk())
             })
             .then(function () {
-                var result = factoids.get("sample alias");
+                try {
+                    var result = factoids.get("sample alias");
+                } catch (e) {
+                    logfn(e.name);
+                    logfn(e.message);
+                    assert(false);
+                }
                 assert(result.isFail());
                 assert(result.fail() === "max-alias-depth-reached");
             });
@@ -190,7 +201,14 @@ describe("Factoids", function () {
         var factoids;
 
         beforeEach(function () {
-            factoids = Factoids("", function (hostmask) { return hostmask === "admin!admin@isp.net"; }, 3)
+            factoids = Factoids({
+                databaseLocation: "",
+                isEditorAdmin: function (hostmask) {
+                    return hostmask === "admin!admin@isp.net";
+                }, 
+                maxAliasDepth: 3,
+                beforeUpdate: Ok
+            });
         });
 
         it("disallows normal users from setting locked factoids", function () {
@@ -222,6 +240,88 @@ describe("Factoids", function () {
                 var failure = result.fail();
                 logfn(failure);
                 assert(failure === "frozen");
+            });
+        });
+    });
+
+    describe("beforeUpdate property", function () {
+        it("throws an error if beforeUpdate is not a function", function (done) {
+            try {
+                var factoids = Factoids({
+                    databaseLocation: "",
+                    isEditorAdmin: function () { return true; }, 
+                    maxAliasDepth: 3,
+                    beforeUpdate: undefined
+                });
+                done("No error thrown!");
+            } catch (e) {
+                done();
+            }
+        });
+
+        it("is called right before setting a factoid", function () {
+            var spy = sinon.spy(Ok);
+
+            var factoids = Factoids({
+                databaseLocation: "",
+                isEditorAdmin: function () { return true; }, 
+                maxAliasDepth: 3,
+                beforeUpdate: spy
+            });
+
+            assert(!spy.called);
+            
+            return factoids.set("abc", {
+                intent: "say",
+                message: "123",
+                editor: "user!user@isp.net"
+            })
+            .then(function (value) {
+                assert(spy.called);
+            });
+        });
+
+        it("can block the factoid from being updated", function () {
+            var factoids = Factoids({
+                databaseLocation: "",
+                isEditorAdmin: function () { return true; }, 
+                maxAliasDepth: 3,
+                beforeUpdate: function () { return Fail("blocked"); }
+            });
+
+            return factoids.set("abc", {
+                intent: "say",
+                message: "123",
+                editor: "user!user@isp.net"
+            })
+            .then(function (setResult) {
+                assert(setResult.isFail());
+
+                assert(setResult.fail() === "blocked");
+            });
+        });
+
+        it("can modify the factoid", function () {
+            var beforeUpdate = function (value) {
+                value.intent = "act";
+                return Ok(value);
+            };
+
+            var factoids = Factoids({
+                databaseLocation: "",
+                isEditorAdmin: function () { return true; }, 
+                maxAliasDepth: 3,
+                beforeUpdate: beforeUpdate
+            });
+
+            return factoids.set("abc", {
+                intent: "say",
+                message: "123",
+                editor: "user!user@isp.net"
+            })
+            .then(function (setResult) {
+                assert(setResult.isOk());
+                assert(setResult.ok().intent === "act");
             });
         });
     });

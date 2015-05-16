@@ -13,14 +13,15 @@ var result = require("r-result");
 var Ok = result.Ok;
 var Fail = result.Fail;
 
-var makeClient = function () {
+var makeClient = function (daemon) {
     var client = {};
 
     client.config = function (value) {
         return {
             "command-trigger": "!",
             "factoids-trigger": "@",
-            "factoids-database": "" // In memory database.
+            "factoids-database": "", // In memory database.
+            "daemon": daemon || "unreal"
         }[value];
     };
 
@@ -264,6 +265,58 @@ describe("Factoids plugin", function () {
                     logfn(inspect(response));
                     assert(response === "Cannot forget factoid 'x'. Factoid does not exist.")
                 });
+            });
+        });
+    });
+
+    describe("Twitch protection", function () {
+        it("disallows messages that begin with '!' when dameon is 'twitch' and intent is 'say'", function () {
+            client = makeClient("twitch");
+            plugin = Plugin.init(client);
+
+            learn = plugin.handlers["!learn"];
+
+            return learn({
+                args: ["x", "=", "!evil"],
+                hostmask: "user!user@isp.net"
+            })
+            .then(function (response) {
+                logfn(inspect(response));
+                assert(response === "Disallowed! Factoid message could be a Twitch command.");
+            });
+        });
+
+        it("disallows editing to make message start with '!' when prior test conditions are true", function () {
+            client = makeClient("twitch");
+            plugin = Plugin.init(client);
+
+            learn = plugin.handlers["!learn"];
+
+            return learn({
+                args: ["x", "=", "evil"],
+                hostmask: "user!user@isp.net"
+            })
+            .then(function () {
+                return learn({
+                    args: ["x", "~=", "s/^/!/"],
+                    hostmask: "user!user@isp.net"
+                });
+            })
+            .then(function (response) {
+                logfn(inspect(response));
+                assert(response === "Disallowed! Factoid message could be a Twitch command.");
+            });
+        });
+
+        it("allows editing to make messages start with '!' when daemon is not 'twitch'", function () {
+            // Note(Havvy): Uses `learn` from beforeEach of top-level describe.
+            return learn({
+                args: ["x", "=", "!evil"],
+                hostmask: "user!user@isp.net"
+            })
+            .then(function (response) {
+                logfn(inspect(response));
+                assert(response === "Learned factoid 'x'.");
             });
         });
     });
