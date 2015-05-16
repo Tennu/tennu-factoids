@@ -1,6 +1,6 @@
 {
   "name": "tennu-factoids",
-  "version": "4.1.3",
+  "version": "4.2.0",
   "description": "Factoids plugin for Tennu IRC bots.",
   "main": "plugin.js",
   "scripts": {
