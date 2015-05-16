@@ -308,6 +308,45 @@ describe("Factoids plugin", function () {
             });
         });
 
+        it("disallows messages that begin with '/' when dameon is 'twitch' and intent is 'say'", function () {
+            client = makeClient("twitch");
+            plugin = Plugin.init(client);
+
+            learn = plugin.handlers["!learn"];
+
+            return learn({
+                args: ["x", "=", "/evil"],
+                hostmask: "user!user@isp.net"
+            })
+            .then(function (response) {
+                logfn(inspect(response));
+                assert(response === "Disallowed! Factoid message could be a Twitch command.");
+            });
+        });
+
+        it("disallows editing to make message start with '/' when prior test conditions are true", function () {
+            client = makeClient("twitch");
+            plugin = Plugin.init(client);
+
+            learn = plugin.handlers["!learn"];
+
+            return learn({
+                args: ["x", "=", "evil"],
+                hostmask: "user!user@isp.net"
+            })
+            .then(function () {
+                return learn({
+                    args: ["x", "~=", "s/^/\//"],
+                    hostmask: "user!user@isp.net"
+                });
+            })
+            .then(function (response) {
+                logfn(inspect(response));
+                assert(response === "Disallowed! Factoid message could be a Twitch command." ||
+                    response === "Invalid replacement format. See !help learn replace for format.");
+            });
+        });
+
         it("allows editing to make messages start with '!' when daemon is not 'twitch'", function () {
             // Note(Havvy): Uses `learn` from beforeEach of top-level describe.
             return learn({

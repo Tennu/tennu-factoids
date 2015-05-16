@@ -61,7 +61,7 @@ module.exports = {
             }
 
             return function (factoid) {
-                if (factoid.intent === "say" && factoid.message[0] === "!") {
+                if (factoid.intent === "say" && (factoid.message[0] === "!" || factoid.message[0] === "/")) {
                     return Fail("maybe-twitch-command");
                 } else {
                     return Ok(factoid);
