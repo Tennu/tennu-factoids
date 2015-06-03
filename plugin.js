@@ -154,6 +154,8 @@ module.exports = {
 
                 function edit (key, replacement) {
                     function extractReplacement (replacement) {
+                        replacement = trim(replacement);
+
                         // This regular expression is made of layers.
                         // The outer layer is r### ^s/_/_/_$ ###
                         // The inner layer is r### (([^/]|\/)*) ###
@@ -185,7 +187,7 @@ module.exports = {
                     }
 
                     return Promise.try(function () {
-                        return extractReplacement(trim(replacement))
+                        return extractReplacement(replacement)
                         .andThen(function (replacementObject) {
                             try {
                                 const regexp = new RegExp(replacementObject.find, replacementObject.flags);
