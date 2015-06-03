@@ -184,6 +184,7 @@ describe("Factoids plugin", function () {
             .then(function () {
                 return learn({
                     // Note that `[` in a RegExp has special meaning and has to be closed.
+                    // The valid format would be s/[[]/</, I think.
                     args: ["x", "~=", "s/[/</"],
                     hostmask: "user!user@isp.net"
                 });
@@ -191,6 +192,31 @@ describe("Factoids plugin", function () {
             .then(function (replaceResponse) {
                 logfn(inspect(replaceResponse));
                 assert(replaceResponse === "Invalid replacement format. RegExp invalid.");
+            });
+        });
+
+        it("will declare when no change was made.", function () {
+            return learn({
+                args: ["x", "=", "y"],
+                hostmask: "user!user@ips.net"
+            })
+            .then(function () {
+                return learn({
+                    args: ["x", "~=", "s/foo/bar/"],
+                    hostmask: "user!user@isp.net"
+                });
+            })
+            .then(function (replaceResponse) {
+                logfn(inspect(replaceResponse));
+                assert(replaceResponse === "Replacement on 'x' had no effect.");
+
+                return factoid({
+                    args: ["x"]
+                });
+            })
+            .then(function (factoidResponse) {
+                logfn(inspect(factoidResponse));
+                assert(equal(factoidResponse, { intent: "say", message: "y" }));
             });
         });
     });

@@ -170,7 +170,7 @@ module.exports = function (options) {
 
             return getPreviousKeyForEditing(key, editor)
             .then(bindr(Result.andThen, editOnlyWhenPreviousKeyExists))
-            .then(bindr(Result.map, function (description) {
+            .then(bindr(Result.andThen, function (description) {
                 const old_message = description.message;
                 const new_message = old_message.replace(regexp, replacement);
 
@@ -186,7 +186,7 @@ module.exports = function (options) {
                 description.editor = editor;
                 description.time = now();
 
-                return description;
+                return Ok(description);
             }))
             .then(bindr(Result.andThen, beforeUpdate))
             .then(bindr(Result.map, function (value) {

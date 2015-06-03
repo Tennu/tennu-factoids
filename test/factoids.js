@@ -114,6 +114,26 @@ describe("Factoids", function () {
             });
         });
 
+        it("will fail if regexp change does not modify the description", function () {
+            return factoids.set("x", {
+                intent: "say",
+                message: "sample description",
+                editor: "user"
+            })
+            .then(function (factoidResult) {
+                assert(factoidResult.isOk());
+
+                return factoids.replace("x", /foo/, "bar", "user");
+            })
+            .then(function (replaceResult) {
+                logfn(inspect(replaceResult));
+                assert(replaceResult.isFail());
+                const failureReason = replaceResult.fail();
+
+                assert(failureReason === "unchanged");
+            });
+        });
+
         it("can have keys alias other keys", function () {
             return factoids.set("sample keyword", {
                 intent: "say",
