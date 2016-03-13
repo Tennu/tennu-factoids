@@ -35,6 +35,23 @@ describe("Factoids", function () {
             assert(result.fail() === "no-factoid");
         });
 
+        it("setting a key that is too long, Fail('message-length-exceeded')", function () {
+            return factoids.set("sample keyword", {
+                intent: "say",
+                message:  new Array(400).join().split(",").join("a"),
+                editor: "user"
+            }) 
+            .then(function (factoidResult) {
+                logfn(inspect(factoidResult));
+                assert(factoidResult.isFail());
+                const failureReason = factoidResult.fail();
+
+                assert(failureReason === "message-length-exceeded");
+
+            });
+
+        });
+
         it("setting a key that was never set returns set factoid value", function () {
             return factoids.set("sample keyword", {
                 intent: "say",
@@ -113,6 +130,29 @@ describe("Factoids", function () {
                 assert(replaceResult.isOk());
             });
         });
+
+        it("cannot replace one description with a message that is too long, Fail(message-length-exceeded)", function () {
+            return factoids.set("sample keyword", {
+                intent: "say",
+                message: new Array(20).join().split(",").join("a"),
+                editor: "user"
+            })
+            .then(function (factoidResult) {
+                assert(factoidResult.isOk());
+            })
+            .then(function () {
+                return factoids.replace("sample keyword", /a/g, new Array(20).join().split(",").join("a"), "user");
+            })
+            .then(function (replaceResult) {
+                logfn(inspect(replaceResult));
+                assert(replaceResult.isFail());
+                const failureReason = replaceResult.fail();
+
+                assert(failureReason === "message-length-exceeded");
+
+            });
+        });
+    
 
         it("will fail if regexp change does not modify the description", function () {
             return factoids.set("x", {

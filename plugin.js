@@ -248,6 +248,7 @@ module.exports = {
                         case "bad-format-no-key":    return "Invalid format. No key specified.";
                         case "bad-format-no-desc":   return "Invalid format. No description specified.";
                         case "maybe-twitch-command": return "Disallowed! Factoid message could be a Twitch command.";
+                        case "message-length-exceeded": return "Message too long!";
                         default:
                             client.error("PluginFactoids", format("Unhandled failure reason in !learn: %s", failureReason));
                             return format("Error: Unhandled failure reason in text replacement ('%s').", failureReason);

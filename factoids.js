@@ -127,6 +127,10 @@ module.exports = function (options) {
                     throw new Error("An intent, message, and editor are all needed to set a new factoid.");
                 }
 
+                if (value.message.length > 307) {
+                    return Fail("message-length-exceeded")
+                }
+
                 return Result.and(
                     disallowAtCharacterInKey(key),
                     getPreviousKeyForEditing(key, value.editor)
@@ -176,6 +180,10 @@ module.exports = function (options) {
 
                 if (old_message === new_message) {
                     return Fail("unchanged");
+                }
+
+                if (new_message.length > 307) {
+                    return Fail("message-length-exceeded");
                 }
 
                 if (new_message === "") {
