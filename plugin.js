@@ -42,6 +42,8 @@ module.exports = {
     name: "factoids",
 
     configDefaults: {
+        "factoids-max-alias-depth": 3,
+
         // 510 - "PRIVMSG #c n :" = 496.
         // 510 is the maximum length of an IRC message.
         // The string is the minimal number of non-message characters
@@ -53,7 +55,7 @@ module.exports = {
         const commandTrigger = client.config("command-trigger");
         const factoidTrigger = client.config("factoids-trigger");
         const databaseLocation = client.config("factoids-database");
-        const maxAliasDepth = client.config("factoids-max-alias-depth") || 3;
+        const maxAliasDepth = client.config("factoids-max-alias-depth");
         const maxMessageLength = client.config("factoids-max-message-length");
         const daemon = client.config("daemon");
 

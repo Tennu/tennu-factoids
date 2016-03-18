@@ -96,6 +96,10 @@ module.exports = function (options) {
         return key.indexOf("@") === -1 ? Ok() : Fail("at-symbol-in-key");
     };
 
+    const disallowTooLongMessages = function (message) {
+        return message.length <= maxMessageLength ? Ok() : Fail("message-length-exceeded")
+    };
+
     return {
         // String -> %Tennu.Message{}
         get: function get (key) {
@@ -136,10 +140,11 @@ module.exports = function (options) {
                     return Fail("message-length-exceeded")
                 }
 
-                return Result.and(
+                return [
+                    disallowTooLongMessages(value.message),
                     disallowAtCharacterInKey(key),
                     getPreviousKeyForEditing(key, value.editor)
-                );
+                ].reduce(Result.and);
             })
             .then(bindr(Result.map, function (previousValue) {
                 return {
