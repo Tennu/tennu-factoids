@@ -39,11 +39,22 @@ const bindr = function (fn, args) {
 };
 
 module.exports = {
+    name: "factoids",
+
+    configDefaults: {
+        // 510 - "PRIVMSG #c n :" = 496.
+        // 510 is the maximum length of an IRC message.
+        // The string is the minimal number of non-message characters
+        // in a private message sent from the server.
+        "factoids-max-message-length": 496
+    },
+
     init: function (client, imports) {
         const commandTrigger = client.config("command-trigger");
         const factoidTrigger = client.config("factoids-trigger");
         const databaseLocation = client.config("factoids-database");
         const maxAliasDepth = client.config("factoids-max-alias-depth") || 3;
+        const maxMessageLength = client.config("factoids-max-message-length");
         const daemon = client.config("daemon");
 
         const adminPlugin = client.getRole("admin");
@@ -73,6 +84,7 @@ module.exports = {
             databaseLocation: databaseLocation, 
             isEditorAdmin: isAdmin,
             maxAliasDepth: maxAliasDepth,
+            maxMessageLength: maxMessageLength,
             beforeUpdate: beforeUpdate
         });
 

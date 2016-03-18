@@ -21,6 +21,8 @@ var makeClient = function (daemon) {
             "command-trigger": "!",
             "factoids-trigger": "@",
             "factoids-database": "", // In memory database.
+            "factoids-max-alias-depth": Plugin.configDefaults["factoids-max-alias-depth"],
+            "factoids-max-message-length": Plugin.configDefaults["factoids-max-message-length"],
             "daemon": daemon || "unreal"
         }[value];
     };
@@ -141,12 +143,58 @@ describe("Factoids plugin", function () {
     });
 
     describe("editing", function () {
-        it.skip("can do simple find and replace", function () {
+        it("can do simple find and replace", function () {
+            return learn({
+                args: ["x", "=", "Hello world."],
+                hostmask: "user!user@isp.net"  
+            })
+            .then(function () {
+                return learn({
+                    args: ["x", "~=", "s/world/channel/"],
+                    hostmask: "user!user@isp.net"
+                });
+            })
+            .then(function (replaceResponse) {
+                logfn(inspect(replaceResponse));
+                assert(replaceResponse === "Successfully did replacement on 'x'.");
 
+                var getResponse = factoid({
+                    args: ["x"]
+                });
+
+                logfn(inspect(getResponse));
+                assert(equal(getResponse, {
+                    intent: "say",
+                    message: "Hello channel."
+                }));
+            });
         });
 
-        it.skip("can append simple text", function () {
+        it("can append simple text", function () {
+            return learn({
+                args: ["x", "=", "y"],
+                hostmask: "user!user@isp.net"  
+            })
+            .then(function () {
+                return learn({
+                    args: ["x", "+=", "z"],
+                    hostmask: "user!user@isp.net"
+                });
+            })
+            .then(function (replaceResponse) {
+                logfn(inspect(replaceResponse));
+                assert(replaceResponse === "Successfully did replacement on 'x'.");
 
+                var getResponse = factoid({
+                    args: ["x"]
+                });
+
+                logfn(inspect(getResponse));
+                assert(equal(getResponse, {
+                    intent: "say",
+                    message: "y z"
+                }));
+            });
         });
 
         it("can append a URL", function () {
@@ -221,15 +269,15 @@ describe("Factoids plugin", function () {
         });
 
         it("will not let you edit a factoid to be too long.", function () {
-            const twenty_a = new Array(21).join("a");
+            const thirty_a = new Array(31).join("a");
 
             return learn({
-                args: ["x", "=", twenty_a],
+                args: ["x", "=", thirty_a],
                 hostmask: "user!user@isp.net"
             })
             .then(function () {
                 return learn({
-                    args: ["x", "~=", "s/a/" + twenty_a + "/g"],
+                    args: ["x", "~=", "s/a/" + thirty_a + "/g"],
                     hostmask: "user!user@isp.net"
                 });
             })
@@ -243,7 +291,7 @@ describe("Factoids plugin", function () {
             })
             .then(function (factoidResponse) {
                 logfn(inspect(factoidResponse));
-                assert(equal(factoidResponse, { intent: "say", message: twenty_a }));
+                assert(equal(factoidResponse, { intent: "say", message: thirty_a }));
             });
         });
     });

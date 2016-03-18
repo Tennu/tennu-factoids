@@ -18,7 +18,7 @@
 
  // Almost all the promises used in this module is because the check
  // for whether a user is an editor when a factoid is frozen returns a
- // promise. If it could be done syncronously, all the promise handling
+ // promise. If it could be done synchronously, all the promise handling
  // code would just melt away.
 
  // Dirty DB really needs an update method...
@@ -41,6 +41,7 @@ const bindr = function (fn, args) {
 module.exports = function (options) {
     const databaseLocation = options.databaseLocation;
     const isEditorAdmin = options.isEditorAdmin;
+    const maxMessageLength = options.maxMessageLength;
     const maxAliasDepth = options.maxAliasDepth;
     const beforeUpdate = options.beforeUpdate;
 
@@ -50,6 +51,10 @@ module.exports = function (options) {
 
     if (typeof maxAliasDepth !== "number" || maxAliasDepth === Infinity) {
         throw new Error("maxAliasDepth property must be a finite positive integer.");
+    }
+
+    if (typeof maxMessageLength !== "number") {
+        throw new Error("maxMessageLength property must be a positive integer (or Infinity).");
     }
 
     if (typeof beforeUpdate !== "function") {
@@ -127,7 +132,7 @@ module.exports = function (options) {
                     throw new Error("An intent, message, and editor are all needed to set a new factoid.");
                 }
 
-                if (value.message.length > 307) {
+                if (value.message.length > maxMessageLength) {
                     return Fail("message-length-exceeded")
                 }
 
@@ -182,7 +187,7 @@ module.exports = function (options) {
                     return Fail("unchanged");
                 }
 
-                if (new_message.length > 307) {
+                if (new_message.length > maxMessageLength) {
                     return Fail("message-length-exceeded");
                 }
 
