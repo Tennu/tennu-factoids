@@ -134,7 +134,7 @@ describe("Factoids", function () {
         it("cannot replace one description with a message that is too long, Fail(message-length-exceeded)", function () {
             return factoids.set("sample keyword", {
                 intent: "say",
-                message: new Array(20).join().split(",").join("a"),
+                message: new Array(20).join("a"),
                 editor: "user"
             })
             .then(function (factoidResult) {

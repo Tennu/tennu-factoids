@@ -198,7 +198,7 @@ describe("Factoids plugin", function () {
         it("will declare when no change was made.", function () {
             return learn({
                 args: ["x", "=", "y"],
-                hostmask: "user!user@ips.net"
+                hostmask: "user!user@isp.net"
             })
             .then(function () {
                 return learn({
@@ -217,6 +217,33 @@ describe("Factoids plugin", function () {
             .then(function (factoidResponse) {
                 logfn(inspect(factoidResponse));
                 assert(equal(factoidResponse, { intent: "say", message: "y" }));
+            });
+        });
+
+        it("will not let you edit a factoid to be too long.", function () {
+            const twenty_a = new Array(21).join("a");
+
+            return learn({
+                args: ["x", "=", twenty_a],
+                hostmask: "user!user@isp.net"
+            })
+            .then(function () {
+                return learn({
+                    args: ["x", "~=", "s/a/" + twenty_a + "/g"],
+                    hostmask: "user!user@isp.net"
+                });
+            })
+            .then(function (replaceResponse) {
+                logfn(inspect(replaceResponse));
+                assert(replaceResponse === "Factoid too long.");
+
+                return factoid({
+                    args: ["x"]
+                });
+            })
+            .then(function (factoidResponse) {
+                logfn(inspect(factoidResponse));
+                assert(equal(factoidResponse, { intent: "say", message: twenty_a }));
             });
         });
     });
