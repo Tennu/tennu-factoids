@@ -203,8 +203,14 @@ module.exports = {
                     return Promise.try(function () {
                         return extractReplacement(replacement)
                         .andThen(function (replacementObject) {
+                            // Cannot use a `const` inside the `try` block
+                            // because in ES6, the `const` is only in scope
+                            // within that block. Thus, hoisting it out of
+                            // that block. Have to use `var` due to lack
+                            // of expression based try/catch.
+                            var regexp;
                             try {
-                                const regexp = new RegExp(replacementObject.find, replacementObject.flags);
+                                regexp = new RegExp(replacementObject.find, replacementObject.flags);
                             } catch (e) {
                                 return Fail("bad-replace-regexp");
                             }
