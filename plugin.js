@@ -6,6 +6,9 @@ const Result = require('r-result');
 const Ok = Result.Ok;
 const Fail = Result.Fail;
 
+const UNSAFE = false;
+const SAFE = true;
+
 const splitAt = function (string, match) {
     const matchIx = string.indexOf(match);
 
@@ -48,7 +51,9 @@ module.exports = {
         // 510 is the maximum length of an IRC message.
         // The string is the minimal number of non-message characters
         // in a private message sent from the server.
-        "factoids-max-message-length": 496
+        "factoids-max-message-length": 496,
+
+        "factoids-safe-replace": false
     },
 
     init: function (client, imports) {
@@ -57,6 +62,7 @@ module.exports = {
         const databaseLocation = client.config("factoids-database");
         const maxAliasDepth = client.config("factoids-max-alias-depth");
         const maxMessageLength = client.config("factoids-max-message-length");
+        const safeReplace = client.config("factoids-safe-replace");
         const daemon = client.config("daemon");
 
         const adminPlugin = client.getRole("admin");
@@ -87,7 +93,8 @@ module.exports = {
             isEditorAdmin: isAdmin,
             maxAliasDepth: maxAliasDepth,
             maxMessageLength: maxMessageLength,
-            beforeUpdate: beforeUpdate
+            beforeUpdate: beforeUpdate,
+            safeReplace: safeReplace
         });
 
         // Privmsg -> Bool
@@ -152,14 +159,14 @@ module.exports = {
                 const key = trim(fullkey.slice(0, -1));
                 const description = trim(args[1]);
 
-                function learn (key, description, intent) {
+                function learn (key, description, intent, isSafeReplace) {
                     description = {
                         intent: intent,
                         message: trim(description),
                         editor: command.hostmask
                     };
 
-                    return factoids.set(key, description)
+                    return factoids.set(key, description, {isSafeReplace: isSafeReplace})
                     .then(bindr(Result.map, function (description) {
                         client.note("FactoidsPlugin", format("Factoid: '%s' => [%s] %s", key, description.intent, description.message));
                         return format("Learned factoid '%s'.", key);
@@ -250,11 +257,13 @@ module.exports = {
                 .then(bindr(Result.andThen, function () {
                     switch (modifier) {
                         case "~": return edit(key, description);
-                        case ":": return learn(key, format("%s is %s", key, description), "say");
-                        case "!": return learn(key, description, "act");
+                        case ":": return learn(key, format("%s is %s", key, description), "say", UNSAFE);
+                        case "!": return learn(key, description, "act", UNSAFE);
                         case "+": return edit(key, format("s/$/ %s/", description.replace(/\//g, "\\/")));
                         case "@": return alias(key, description);
-                        default: return learn(trim(fullkey), description, "say");
+                        case "f": /* fallthrough */
+                        case "F": return learn(key, description, "say", SAFE);
+                        default: return learn(trim(fullkey), description, "say", UNSAFE);
                     }
                 }))
                 .then(bindr(Result.unwrapOrElse, function (failureReason) {
@@ -269,6 +278,7 @@ module.exports = {
                         case "bad-format-no-desc":   return "Invalid format. No description specified.";
                         case "maybe-twitch-command": return "Disallowed! Factoid message could be a Twitch command.";
                         case "message-length-exceeded": return "Factoid too long.";
+                        case "unsafe-replace": return format("Cannot rewrite '%s'. Use `%s f= new description` or !forget if you really wanted to replace.", key, key);
                         default:
                             client.error("PluginFactoids", format("Unhandled failure reason in !learn: %s", failureReason));
                             return format("Error: Unhandled failure reason in text replacement ('%s').", failureReason);

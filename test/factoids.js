@@ -27,7 +27,8 @@ describe("Factoids", function () {
             isEditorAdmin: isEditorAdmin, 
             maxAliasDepth: 3,
             maxMessageLength: maxMessageLength,
-            beforeUpdate: Ok
+            beforeUpdate: Ok,
+            safeReplace: false
         });
     }
 
@@ -333,7 +334,8 @@ describe("Factoids", function () {
                     isEditorAdmin: function () { return true; }, 
                     maxAliasDepth: 3,
                     maxMessageLength: 307,
-                    beforeUpdate: undefined
+                    beforeUpdate: undefined,
+                    safeReplace: false
                 });
             });
         });
@@ -346,7 +348,8 @@ describe("Factoids", function () {
                 isEditorAdmin: function () { return true; }, 
                 maxAliasDepth: 3,
                 maxMessageLength: 307,
-                beforeUpdate: spy
+                beforeUpdate: spy,
+                safeReplace: false
             });
 
             assert(!spy.called);
@@ -367,7 +370,8 @@ describe("Factoids", function () {
                 isEditorAdmin: function () { return true; }, 
                 maxAliasDepth: 3,
                 maxMessageLength: 307,
-                beforeUpdate: function () { return Fail("blocked"); }
+                beforeUpdate: function () { return Fail("blocked"); },
+                safeReplace: false
             });
 
             return factoids.set("abc", {
@@ -393,7 +397,8 @@ describe("Factoids", function () {
                 isEditorAdmin: function () { return true; }, 
                 maxAliasDepth: 3,
                 maxMessageLength: 307,
-                beforeUpdate: beforeUpdate
+                beforeUpdate: beforeUpdate,
+                safeReplace: false
             });
 
             return factoids.set("abc", {

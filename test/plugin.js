@@ -13,7 +13,7 @@ var result = require("r-result");
 var Ok = result.Ok;
 var Fail = result.Fail;
 
-var makeClient = function (daemon) {
+var makeClient = function (opts) {
     var client = {};
 
     client.config = function (value) {
@@ -23,7 +23,8 @@ var makeClient = function (daemon) {
             "factoids-database": "", // In memory database.
             "factoids-max-alias-depth": Plugin.configDefaults["factoids-max-alias-depth"],
             "factoids-max-message-length": Plugin.configDefaults["factoids-max-message-length"],
-            "daemon": daemon || "unreal"
+            "factoids-safe-replace": opts.safeReplace || Plugin.configDefaults["factoids-safe-replace"],
+            "daemon": opts.daemon || "unreal",
         }[value];
     };
 
@@ -49,7 +50,7 @@ describe("Factoids plugin", function () {
     var factoid, learn, forget;
 
     beforeEach(function () {
-        client = makeClient();
+        client = makeClient({});
         plugin = Plugin.init(client);
 
         factoid = plugin.handlers["!factoid"];
@@ -371,8 +372,8 @@ describe("Factoids plugin", function () {
     });
 
     describe("Twitch protection", function () {
-        it("disallows messages that begin with '!' when dameon is 'twitch' and intent is 'say'", function () {
-            client = makeClient("twitch");
+        it("disallows messages that begin with '!' when daemon is 'twitch' and intent is 'say'", function () {
+            client = makeClient({daemon: "twitch"});
             plugin = Plugin.init(client);
 
             learn = plugin.handlers["!learn"];
@@ -388,7 +389,7 @@ describe("Factoids plugin", function () {
         });
 
         it("disallows editing to make message start with '!' when prior test conditions are true", function () {
-            client = makeClient("twitch");
+            client = makeClient({daemon: "twitch"});
             plugin = Plugin.init(client);
 
             learn = plugin.handlers["!learn"];
@@ -409,8 +410,8 @@ describe("Factoids plugin", function () {
             });
         });
 
-        it("disallows messages that begin with '/' when dameon is 'twitch' and intent is 'say'", function () {
-            client = makeClient("twitch");
+        it("disallows messages that begin with '/' when daemon is 'twitch' and intent is 'say'", function () {
+            client = makeClient({daemon: "twitch"});
             plugin = Plugin.init(client);
 
             learn = plugin.handlers["!learn"];
@@ -426,7 +427,7 @@ describe("Factoids plugin", function () {
         });
 
         it("disallows editing to make message start with '/' when prior test conditions are true", function () {
-            client = makeClient("twitch");
+            client = makeClient({daemon: "twitch"});
             plugin = Plugin.init(client);
 
             learn = plugin.handlers["!learn"];
@@ -452,6 +453,93 @@ describe("Factoids plugin", function () {
             // Note(Havvy): Uses `learn` from beforeEach of top-level describe.
             return learn({
                 args: ["x", "=", "!evil"],
+                hostmask: "user!user@isp.net"
+            })
+            .then(function (response) {
+                logfn(inspect(response));
+                assert(response === "Learned factoid 'x'.");
+            });
+        });
+    });
+
+    describe("Safe editing", function () {
+        // Completely replaces the beforeEach from the higher level `describe`.
+        beforeEach(function () {
+            client = makeClient({safeReplace: true});
+            plugin = Plugin.init(client);
+
+            factoid = plugin.handlers["!factoid"];
+            learn = plugin.handlers["!learn"];
+            forget = plugin.handlers["!forget"];
+
+            return learn({
+                args: ["x", "=", "y"],
+                hostmask: "user!user@isp.net"
+            })
+            .then(function (response) {
+                logfn(inspect(response));
+                assert(response === "Learned factoid 'x'.");
+            });
+        });
+
+        it("disallows relearning a factoid unsafely", function () {
+            return learn({
+                args: ["x", "=", "z"],
+                hostmask: "user!user@isp.net"
+            })
+            .then(function (response) {
+                logfn(inspect(response));
+                assert(response === "Cannot rewrite 'x'. Use `x f= new description` or !forget if you really wanted to replace.")
+            });
+        });
+
+        it("disallows relearning a factoid unsafely as an alias", function () {
+            return learn({
+                args: ["x", "@=", "z"],
+                hostmask: "user!user@isp.net"
+            })
+            .then(function (response) {
+                logfn(inspect(response));
+                assert(response === "Cannot rewrite 'x'. Use `x f= new description` or !forget if you really wanted to replace.")
+            });
+        });
+
+        it("disallows relearning a factoid unsafely as an action", function () {
+            return learn({
+                args: ["x", "!=", "z"],
+                hostmask: "user!user@isp.net"
+            })
+            .then(function (response) {
+                logfn(inspect(response));
+                assert(response === "Cannot rewrite 'x'. Use `x f= new description` or !forget if you really wanted to replace.")
+            });
+        });
+
+        it("disallows relearning a factoid unsafely as a definition", function () {
+            return learn({
+                args: ["x", ":=", "z"],
+                hostmask: "user!user@isp.net"
+            })
+            .then(function (response) {
+                logfn(inspect(response));
+                assert(response === "Cannot rewrite 'x'. Use `x f= new description` or !forget if you really wanted to replace.")
+            });
+        });
+
+        it("allows relearning a factoid as a forced relearn with lowercase 'f'", function () {
+            return learn({
+                args: ["x", "f=", "z"],
+                hostmask: "user!user@isp.net"
+            })
+            .then(function (response) {
+                logfn(inspect(response));
+                assert(response === "Learned factoid 'x'.");
+            });
+        });
+
+        it("allows relearning a factoid as a forced relearn with capital 'F'", function () {
+            return learn({
+                args: ["x", "F=", "z"],
                 hostmask: "user!user@isp.net"
             })
             .then(function (response) {

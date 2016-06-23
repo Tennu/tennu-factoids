@@ -14,6 +14,20 @@
  *
  * 1: Will be missing if the message is deleted.
  * 2: Factoids that were never created but frozen will just be {frozen: true}.
+ *
+ *
+ *
+ * The Factoid constructor takes the following options:
+ * 
+ * databaseLocation: Where the dirty database is. Will create it doesn't exist.
+ *                   If an empty string is given, will use an in-memory database.
+ * isEditorAdmin: Function for deciding whether an editor is an admin or not.
+ * maxMessageLength: The maximum length the description of a factoid can be.
+ * maxAliasDepth: The maximum depth aliasing traversal goes before giving up.
+ * beforeUpdate: A function that gets executed before setting a factoid.
+ * safeReplace: Whether or not safe-replace functionality is enabled. When
+ *              enabled, a factoid cannot replace an old one without being
+ *              called safe by the caller of `set()`. 
  **/
 
  // Almost all the promises used in this module is because the check
@@ -44,6 +58,7 @@ module.exports = function (options) {
     const maxMessageLength = options.maxMessageLength;
     const maxAliasDepth = options.maxAliasDepth;
     const beforeUpdate = options.beforeUpdate;
+    const safeReplace = options.safeReplace;
 
     if (typeof isEditorAdmin !== "function") {
         throw new Error("isEditorAdmin property must be a function.");
@@ -59,6 +74,11 @@ module.exports = function (options) {
 
     if (typeof beforeUpdate !== "function") {
         throw new Error("beforeUpdate property must be a function.");
+    }
+
+    if (typeof safeReplace !== "boolean") {
+        console.log(typeof safeReplace);
+        throw new Error("safeReplace property must be a boolean.");
     }
 
     const db = Dirty(databaseLocation);
@@ -100,6 +120,18 @@ module.exports = function (options) {
         return message.length <= maxMessageLength ? Ok() : Fail("message-length-exceeded")
     };
 
+    const disallowUnsafeReplace = function (key, safety) {
+        if (!safeReplace) { return Ok(/* safety is disabled */); }
+
+        if (safety) { return Ok(/* response is specifically safe */); }
+
+        const value = db.get(key.toLowerCase());
+        if (!value || !value.message) { return Ok(/* key is currently unused */); }
+
+        return Fail("unsafe-replace");
+        
+    }
+
     return {
         // String -> %Tennu.Message{}
         get: function get (key) {
@@ -128,7 +160,7 @@ module.exports = function (options) {
         },
 
         // String, %Factoid{} -> Result<%Factoid{}, String>
-        set: function (key, value) {
+        set: function (key, value, opts) {
             key = key.toLowerCase();
 
             return Promise.try(function () {
@@ -143,6 +175,7 @@ module.exports = function (options) {
                 return [
                     disallowTooLongMessages(value.message),
                     disallowAtCharacterInKey(key),
+                    disallowUnsafeReplace(key, (opts && opts.isSafeReplace) || false),
                     getPreviousKeyForEditing(key, value.editor)
                 ].reduce(Result.and);
             })
