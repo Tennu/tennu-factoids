@@ -195,6 +195,35 @@ describe("Factoids", function () {
             });
         });
 
+        it("will collapse whitespace in a regexp replacement", function () {
+            setup({});
+
+            return factoids.set("x", {
+                intent: "say",
+                message: "first middle last",
+                editor: "user"
+            })
+            .then(function (factoidResult) {
+                assert(factoidResult.isOk());
+
+                return factoids.replace("x", /middle/, "", "user");
+            })
+            .then(function (replaceResult) {
+                assert(replaceResult.isOk());
+
+                return factoids.get("x");
+            })
+            .then(function (getResult) {
+                assert(getResult.isOk());
+                const factoid = getResult.ok();
+
+                assert(equal(factoid, {
+                    intent: "say",
+                    message: "first last"
+                }));
+            });
+        });
+
         it("can have keys alias other keys", function () {
             setup({});
 

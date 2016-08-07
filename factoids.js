@@ -133,7 +133,7 @@ module.exports = function (options) {
     }
 
     return {
-        // String -> %Tennu.Message{}
+        // Fn(String) -> Response<tennu::Response, String>, 
         get: function get (key) {
             function getRecursively(key, aliasDepth) {
                 if (aliasDepth == maxAliasDepth) {
@@ -159,7 +159,7 @@ module.exports = function (options) {
             return getRecursively(key, 0);
         },
 
-        // String, %Factoid{} -> Result<%Factoid{}, String>
+        // Fn(String, Factoid, {isSafeReplace: Boolean?}) -> Result<%Factoid{}, String>
         set: function (key, value, opts) {
             key = key.toLowerCase();
 
@@ -211,7 +211,7 @@ module.exports = function (options) {
             }));
         },
 
-        // (String, RegExp, String, HostMask) -> Result<(), String>
+        // Fn(String, RegExp, String, HostMask) -> Result<(), String>
         replace: function (key, regexp, replacement, editor) {
             key = key.toLowerCase();
 
@@ -219,7 +219,9 @@ module.exports = function (options) {
             .then(bindr(Result.andThen, editOnlyWhenPreviousKeyExists))
             .then(bindr(Result.andThen, function (description) {
                 const old_message = description.message;
-                const new_message = old_message.replace(regexp, replacement);
+                const new_message = old_message
+                    .replace(regexp, replacement)
+                    .replace(/\s+/, " ");
 
                 if (old_message === new_message) {
                     return Fail("unchanged");

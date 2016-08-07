@@ -62,6 +62,7 @@ describe("Factoids plugin", function () {
         it("can learn factoids with !learn", function () {
             return learn({
                 args: ["x", "=", "y"],
+                message: "!learn x = y",
                 hostmask: "user!user@isp.net"
             })
             .then(function (response) {
@@ -73,6 +74,7 @@ describe("Factoids plugin", function () {
         it("can look up factoids with !factoid key", function () {
             return learn({
                 args: ["x", "=", "y"],
+                message: "!learn x = y",
                 hostmask: "user!user@isp.net"
             })
             .then(function () {
@@ -91,11 +93,13 @@ describe("Factoids plugin", function () {
         it("can create an alias of a factoid", function () {
             return learn({
                 args: ["x", "=", "y"],
+                message: "!learn x = y",
                 hostmask: "user!user@isp.net"
             })
             .then(function () {
                 return learn({
                     args: ["y", "@=", "x"],
+                    message: "!learn y @= x",
                     hostmask: "user!user@isp.net"
                 });
             })
@@ -108,11 +112,13 @@ describe("Factoids plugin", function () {
         it("can retrieve an alias of a factoid", function () {
             return learn({
                 args: ["x", "=", "y"],
+                message: "!learn x = y",
                 hostmask: "user!user@isp.net"
             })
             .then(function () {
                 return learn({
                     args: ["y", "@=", "x"],
+                    message: "!learn y @= x",
                     hostmask: "user!user@isp.net"
                 });
             })
@@ -129,6 +135,7 @@ describe("Factoids plugin", function () {
         it("errors out after max alias depth reached", function () {
             return learn({
                 args: ["x", "@=", "x"],
+                message: "!learn x @= x",
                 hostmask: "user!user@isp.net"
             })
             .then(function () {
@@ -147,11 +154,13 @@ describe("Factoids plugin", function () {
         it("can do simple find and replace", function () {
             return learn({
                 args: ["x", "=", "Hello world."],
+                message: "!learn x = Hello world.",
                 hostmask: "user!user@isp.net"  
             })
             .then(function () {
                 return learn({
                     args: ["x", "~=", "s/world/channel/"],
+                    message: "!learn x ~= s/world/channel/",
                     hostmask: "user!user@isp.net"
                 });
             })
@@ -174,11 +183,13 @@ describe("Factoids plugin", function () {
         it("can append simple text", function () {
             return learn({
                 args: ["x", "=", "y"],
+                message: "!learn x = y",
                 hostmask: "user!user@isp.net"  
             })
             .then(function () {
                 return learn({
                     args: ["x", "+=", "z"],
+                    message: "!learn x += z",
                     hostmask: "user!user@isp.net"
                 });
             })
@@ -201,11 +212,13 @@ describe("Factoids plugin", function () {
         it("can append a URL", function () {
             return learn({
                 args: ["x", "=", "y"],
+                message: "!learn x = y",
                 hostmask: "user!user@isp.net"  
             })
             .then(function () {
                 return learn({
                     args: ["x", "+=", "| https://tennu.github.io/"],
+                    message: "!learn x += | https://tennu.github.io/",
                     hostmask: "user!user@isp.net"
                 });
             })
@@ -228,6 +241,7 @@ describe("Factoids plugin", function () {
         it("needs a proper RegExp", function () {
             return learn({
                 args: ["x", "=", "[y]"],
+                message: "!learn x = [y]",
                 hostmask: "user!user@isp.net"  
             })
             .then(function () {
@@ -235,6 +249,7 @@ describe("Factoids plugin", function () {
                     // Note that `[` in a RegExp has special meaning and has to be closed.
                     // The valid format would be s/[[]/</, I think.
                     args: ["x", "~=", "s/[/</"],
+                    message: "!learn x ~= s/[/</",
                     hostmask: "user!user@isp.net"
                 });
             })
@@ -247,11 +262,13 @@ describe("Factoids plugin", function () {
         it("will declare when no change was made.", function () {
             return learn({
                 args: ["x", "=", "y"],
+                message: "!learn x = y",
                 hostmask: "user!user@isp.net"
             })
             .then(function () {
                 return learn({
                     args: ["x", "~=", "s/foo/bar/"],
+                    message: "!learn x ~= s/foo/bar/",
                     hostmask: "user!user@isp.net"
                 });
             })
@@ -274,11 +291,13 @@ describe("Factoids plugin", function () {
 
             return learn({
                 args: ["x", "=", thirty_a],
+                message: `!learn x = ${thirty_a}`,
                 hostmask: "user!user@isp.net"
             })
             .then(function () {
                 return learn({
-                    args: ["x", "~=", "s/a/" + thirty_a + "/g"],
+                    args: ["x", "~=", `s/a/${thirty_a}/g`],
+                    message: `!learn x ~= s/a/${thirty_a}/g`,
                     hostmask: "user!user@isp.net"
                 });
             })
@@ -295,12 +314,39 @@ describe("Factoids plugin", function () {
                 assert(equal(factoidResponse, { intent: "say", message: thirty_a }));
             });
         });
+
+        // NOTE(Havvy): It already does this when wholesale learning a new description.
+        // NOTE(Havvy): If you want to preserve middle whitespace,
+        //              file an issue and it may become an option.
+        it("will collapse whitespace after editing", function () {
+            return learn({
+                args: ["x", "=", "first middle last"],
+                message: "!learn x = first middle last",
+                hostmask: "user!user@isp.net"
+            })
+            .then(function () {
+                return learn({
+                    args: ["x", "~=", "s/middle//"],
+                    message: "!learn x ~= s/middle//",
+                    hostmask: "user!user@isp.net"
+                });
+            })
+            .then(function () {
+                const factoidResponse = factoid({
+                    args: ["x"]
+                });
+
+                logfn(inspect(factoidResponse));
+                assert(equal(factoidResponse, { intent: "say", message: "first last" }));
+            });
+        });
     });
 
     describe("@", function () {
         it("tells the user specified after the @ the factoid", function () {
             return learn({
                 args: ["x", "=", "y"],
+                message: "!learn x = y",
                 hostmask: "user!user@isp.net"
             })
             .then(function () {
@@ -319,6 +365,7 @@ describe("Factoids plugin", function () {
         it("is ignored when the intent is 'act'", function () {
             return learn({
                 args: ["x", "!=", "y"],
+                message: "!learn x = y",
                 hostmask: "user!user@isp.net"
             })
             .then(function () {
@@ -350,6 +397,7 @@ describe("Factoids plugin", function () {
             it("needs a key on the left of the operand", function () {
                 return learn({
                     args: ["=", "y"],
+                    message: "!learn = y",
                     hostmask: "user!user@isp.net"
                 })
                 .then(function (response) {
@@ -380,6 +428,7 @@ describe("Factoids plugin", function () {
 
             return learn({
                 args: ["x", "=", "!evil"],
+                message: "!learn x = !evil",
                 hostmask: "user!user@isp.net"
             })
             .then(function (response) {
@@ -396,11 +445,13 @@ describe("Factoids plugin", function () {
 
             return learn({
                 args: ["x", "=", "evil"],
+                message: "!learn x = evil",
                 hostmask: "user!user@isp.net"
             })
             .then(function () {
                 return learn({
                     args: ["x", "~=", "s/^/!/"],
+                    message: "!learn x ~= s/^/!/",
                     hostmask: "user!user@isp.net"
                 });
             })
@@ -418,6 +469,7 @@ describe("Factoids plugin", function () {
 
             return learn({
                 args: ["x", "=", "/evil"],
+                message: "!learn x = /evil",
                 hostmask: "user!user@isp.net"
             })
             .then(function (response) {
@@ -434,11 +486,13 @@ describe("Factoids plugin", function () {
 
             return learn({
                 args: ["x", "=", "evil"],
+                message: "!learn x = evil",
                 hostmask: "user!user@isp.net"
             })
             .then(function () {
                 return learn({
                     args: ["x", "~=", "s/^/\//"],
+                    message: "!learn x ~= s/^/\//",
                     hostmask: "user!user@isp.net"
                 });
             })
@@ -453,6 +507,7 @@ describe("Factoids plugin", function () {
             // Note(Havvy): Uses `learn` from beforeEach of top-level describe.
             return learn({
                 args: ["x", "=", "!evil"],
+                message: "!learn x = !evil",
                 hostmask: "user!user@isp.net"
             })
             .then(function (response) {
@@ -474,6 +529,7 @@ describe("Factoids plugin", function () {
 
             return learn({
                 args: ["x", "=", "y"],
+                message: "!learn x = y",
                 hostmask: "user!user@isp.net"
             })
             .then(function (response) {
@@ -485,6 +541,7 @@ describe("Factoids plugin", function () {
         it("disallows relearning a factoid unsafely", function () {
             return learn({
                 args: ["x", "=", "z"],
+                message: "!learn x = z",
                 hostmask: "user!user@isp.net"
             })
             .then(function (response) {
@@ -496,6 +553,7 @@ describe("Factoids plugin", function () {
         it("disallows relearning a factoid unsafely as an alias", function () {
             return learn({
                 args: ["x", "@=", "z"],
+                message: "!learn x @= z",
                 hostmask: "user!user@isp.net"
             })
             .then(function (response) {
@@ -507,6 +565,7 @@ describe("Factoids plugin", function () {
         it("disallows relearning a factoid unsafely as an action", function () {
             return learn({
                 args: ["x", "!=", "z"],
+                message: "!learn x != z",
                 hostmask: "user!user@isp.net"
             })
             .then(function (response) {
@@ -518,6 +577,7 @@ describe("Factoids plugin", function () {
         it("disallows relearning a factoid unsafely as a definition", function () {
             return learn({
                 args: ["x", ":=", "z"],
+                message: "!learn x := z",
                 hostmask: "user!user@isp.net"
             })
             .then(function (response) {
@@ -529,6 +589,7 @@ describe("Factoids plugin", function () {
         it("allows relearning a factoid as a forced relearn with lowercase 'f'", function () {
             return learn({
                 args: ["x", "f=", "z"],
+                message: "!learn x f= z",
                 hostmask: "user!user@isp.net"
             })
             .then(function (response) {
@@ -540,6 +601,7 @@ describe("Factoids plugin", function () {
         it("allows relearning a factoid as a forced relearn with capital 'F'", function () {
             return learn({
                 args: ["x", "F=", "z"],
+                message: "!learn x F= z",
                 hostmask: "user!user@isp.net"
             })
             .then(function (response) {

@@ -430,6 +430,21 @@ module.exports = {
             ];
         }
 
+        if (safeReplace) {
+            helpfiles["learn"]["*"] = helpfiles["learn"]["*"].concat([
+                "",
+                "Safe mode is currently enabled. This means to replace a factoid",
+                "you must either use !forget factoid and then !learn factoid = description",
+                "or !learn factoid f= description."
+            ]);
+
+            helpfiles["learn"]["formats"] = helpfiles["learn"]["formats"].concat([
+                "",
+                "{{!}}learn key f= description",
+                "Force relearn the factoid to the new description."
+            ]);
+        }
+
         return {
             handlers: handlers,
             help: helpfiles,
