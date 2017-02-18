@@ -74,19 +74,21 @@ module.exports = {
             isAdmin = function () { return Promise.resolve(false); }
         }
 
-        const beforeUpdate = function () {
-            if (daemon !== "twitch") {
-                return Ok;
+        const beforeUpdate = function (factoid) {
+            if (factoid.intent === "say" && factoid.message[0] === "\u{1}") {
+                return Fail("ctcp-command");
             }
 
-            return function (factoid) {
-                if (factoid.intent === "say" && (factoid.message[0] === "!" || factoid.message[0] === "/")) {
-                    return Fail("maybe-twitch-command");
-                } else {
-                    return Ok(factoid);
-                }
-            };
-        }();
+            if (
+                daemon === "twitch"
+                && factoid.intent === "say"
+                && (factoid.message[0] === "!" || factoid.message[0] === "/")
+            ) {
+                return Fail("maybe-twitch-command");
+            }
+            
+            return Ok(factoid);
+        };
 
         const factoids = Factoids({
             databaseLocation: databaseLocation, 
@@ -276,6 +278,7 @@ module.exports = {
                         case "bad-replace-regexp":   return "Invalid replacement format. RegExp invalid.";
                         case "bad-format-no-key":    return "Invalid format. No key specified.";
                         case "bad-format-no-desc":   return "Invalid format. No description specified.";
+                        case "ctcp-command":         return "Disallowed! Factoid message would be a CTCP command."
                         case "maybe-twitch-command": return "Disallowed! Factoid message could be a Twitch command.";
                         case "message-length-exceeded": return "Factoid too long.";
                         case "unsafe-replace": return format("Cannot rewrite '%s'. Use `%s f= new description` or !forget if you really wanted to replace.", key, key);
