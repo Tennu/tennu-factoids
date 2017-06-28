@@ -159,6 +159,34 @@ module.exports = function (options) {
             return getRecursively(key, 0);
         },
 
+        // Fn(String) -> Result<{exists: Boolean, intent: String?, aliasTo: String?, lastEditor: String?, lastEditTime: Number?, frozen: boolean?}, String>
+        getMetadata: function (key) {
+            const factoid = db.get(key.toLowerCase());
+
+            if (!factoid) {
+                return Fail("no-factoid");
+            }
+
+            const metadata = {
+                lastEditor: factoid.editor,
+                lastEditTime: factoid.time,
+                frozen: factoid.frozen
+            };
+
+            if (factoid.message) {
+                metadata.exists = true;
+                metadata.intent = factoid.intent;
+            } else {
+                metadata.exists = false;
+            }
+
+            if (factoid.intent === "alias") {
+                metadata.aliasTo = factoid.message;
+            }
+
+            return Ok(metadata);
+        },
+
         // Fn(String, Factoid, {isSafeReplace: Boolean?}) -> Result<%Factoid{}, String>
         set: function (key, value, opts) {
             key = key.toLowerCase();

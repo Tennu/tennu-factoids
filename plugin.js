@@ -153,6 +153,30 @@ module.exports = {
                 return getFactoid(command.args.join(" "), true);
             },
 
+            "!factoid-metadata": function (command) {
+                if (command.args.length === 0) {
+                    return "No factoid specified.";
+                }
+
+                const key = command.args.join(" ");
+
+                return factoids.getMetadata(key).match({
+                    Ok: function (metadata) {
+                        // {exists: Boolean, intent: String?, aliasTo: String?, lastEditor: String?, lastEditTime: Number?, frozen: boolean?}
+                        const frozen = metadata.frozen ? "[LOCKED] " : "";
+                        const intent = metadata.exists ? metadata.intent : "Forgotten";
+                        const alias = intent === "alias" ? ` [${metadata.aliasTo}]` : "";
+                        const editor = `${metadata.lastEditor.nickname}!${metadata.lastEditor.username}@${metadata.lastEditor.hostname}`;
+                        const time = String(new Date(metadata.lastEditTime));
+                        return `Factoid metadata for '${key}': ${frozen}Intent=${intent}${alias}; LastEdit=${editor} on ${time}`;
+                    },
+
+                    Fail: function (_failure) {
+                        return `No factoid '${key}' ever created.`;
+                    }
+                });
+            },
+
             "!learn": function (command) {
                 // args is [key, description]
                 const args = splitAt(command.args.join(" "), "=");
@@ -334,7 +358,7 @@ module.exports = {
             "factoids": [
                 "Factoids are short descriptions for phrases often used",
                 "for FAQs or inside jokes.",
-                "",
+                " ",
                 format("You can look up a factoid with `{{!}}factoid key` or %skey.", factoidTrigger),
                 "You can teach this bot a factoid with `{{!}}learn`.",
                 "You can also make the bot forget a factoid with `{{!}}forget key`.",
@@ -345,7 +369,7 @@ module.exports = {
             "factoid": [
                 "{{!}}factoid key",
                 format("%skey", factoidTrigger),
-                "",
+                " ",
                 "Look up a factoid.",
                 "Factoids are small messages this bot responds with.",
                 "",
@@ -355,6 +379,15 @@ module.exports = {
                 "See also: {{!}}learn, {{!}}forget"
             ],
 
+            "factoid-metadata": [
+                "{{!}}factoid-metadata key",
+                " ",
+                "Return metadata about factoid. Information is intent, existence, aliasing info, last editor, intent, and if locked.",
+                "If factoid is an alias, will show alias to in square brackets after intent. e.g. `Intent=alias [other]` aliases to `other`.",
+                "If factoid was forgotten, will show `Intent=Forgotten`.",
+                "If factoid is locked, will show [LOCKED]."
+            ],
+
             "learn": {
                 "*": [
                     "{{!}}learn factoid-key = factiod-description",
@@ -362,7 +395,7 @@ module.exports = {
                     "Adds a factoid to the factoids database.",
                     "This bot also supports a modifier before the `=`.",
                     "To see them, do {{!}}help learn formats",
-                    "",
+                    " ",
                     "Keys may consist of all characters other than `=` and `@`."
                 ],
 
@@ -400,7 +433,9 @@ module.exports = {
             },
 
             "forget": [
-                "{{!}}forget factoid-name"
+                "{{!}}forget factoid-name",
+                " ",
+                "Removes the factoid entry from the factoids database."
             ]
         };
 
