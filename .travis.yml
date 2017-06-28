@@ -2,6 +2,6 @@ sudo: false
 language: node_js
 node_js:
   - "stable"
-  - "4.2"
+  - "6.11"
 notifications:
   irc: "irc.mibbit.net#heartless"
